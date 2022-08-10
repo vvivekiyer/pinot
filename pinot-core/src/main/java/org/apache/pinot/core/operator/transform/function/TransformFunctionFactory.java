@@ -110,8 +110,8 @@ public class TransformFunctionFactory {
         JsonExtractKeyTransformFunction.class);
     typeToImplementation.put(TransformFunctionType.TIMECONVERT,
         TimeConversionTransformFunction.class);
-    typeToImplementation.put(TransformFunctionType.DATETIMECONVERT,
-        DateTimeConversionTransformFunction.class);
+//    typeToImplementation.put(TransformFunctionType.DATETIMECONVERT,
+//        DateTimeConversionTransformFunction.class);
     typeToImplementation.put(TransformFunctionType.DATETRUNC, DateTruncTransformFunction.class);
     typeToImplementation.put(TransformFunctionType.YEAR, DateTimeTransformFunction.Year.class);
     typeToImplementation.put(TransformFunctionType.YEAR_OF_WEEK, DateTimeTransformFunction.YearOfWeek.class);

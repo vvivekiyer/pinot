@@ -54,16 +54,20 @@ public class FunctionRegistry {
    */
   static {
     long startTimeMs = System.currentTimeMillis();
+    LOGGER.info("Start-time={}", startTimeMs);
     Reflections reflections = new Reflections(
         new ConfigurationBuilder().setUrls(ClasspathHelper.forPackage("org.apache.pinot"))
             .filterInputsBy(new FilterBuilder.Include(".*\\.function\\..*"))
             .setScanners(new MethodAnnotationsScanner()));
+    LOGGER.info("Initialized reflections");
     Set<Method> methodSet = reflections.getMethodsAnnotatedWith(ScalarFunction.class);
+    LOGGER.info("Got methodSet. Size={}", methodSet.size());
     for (Method method : methodSet) {
       if (!Modifier.isPublic(method.getModifiers())) {
         continue;
       }
       ScalarFunction scalarFunction = method.getAnnotation(ScalarFunction.class);
+      LOGGER.info("Got the scalar function");
       if (scalarFunction.enabled()) {
         // Annotated function names
         String[] scalarFunctionNames = scalarFunction.names();
@@ -76,6 +80,7 @@ public class FunctionRegistry {
           FunctionRegistry.registerFunction(method, nullableParameters);
         }
       }
+      LOGGER.info("Done with the scalarFunction");
     }
     LOGGER.info("Initialized FunctionRegistry with {} functions: {} in {}ms", FUNCTION_INFO_MAP.size(),
         FUNCTION_INFO_MAP.keySet(), System.currentTimeMillis() - startTimeMs);
@@ -102,6 +107,7 @@ public class FunctionRegistry {
   public static void registerFunction(String functionName, Method method, boolean nullableParameters) {
     FunctionInfo functionInfo = new FunctionInfo(method, method.getDeclaringClass(), nullableParameters);
     String canonicalName = canonicalize(functionName);
+    LOGGER.info("Registering function={}", functionName);
     Map<Integer, FunctionInfo> functionInfoMap = FUNCTION_INFO_MAP.computeIfAbsent(canonicalName, k -> new HashMap<>());
     Preconditions.checkState(functionInfoMap.put(method.getParameterCount(), functionInfo) == null,
         "Function: %s with %s parameters is already registered", functionName, method.getParameterCount());

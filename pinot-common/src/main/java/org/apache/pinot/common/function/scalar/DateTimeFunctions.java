@@ -684,7 +684,6 @@ public class DateTimeFunctions {
    * Equivalent to {@code DateTimeConversionTransformFunction}. Both input and output are string type to support simple
    * date format.
    */
-  @ScalarFunction
   public static String dateTimeConvert(String timeValueStr, String inputFormatStr, String outputFormatStr,
       String outputGranularityStr) {
     long timeValueMs = new DateTimeFormatSpec(inputFormatStr).fromFormatToMillis(timeValueStr);

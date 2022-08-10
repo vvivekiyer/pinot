@@ -71,7 +71,7 @@ public enum TransformFunctionType {
   JSONEXTRACTSCALAR("jsonExtractScalar"),
   JSONEXTRACTKEY("jsonExtractKey"),
   TIMECONVERT("timeConvert"),
-  DATETIMECONVERT("dateTimeConvert"),
+  // DATETIMECONVERT("dateTimeConvert"),
   DATETRUNC("dateTrunc"),
   YEAR("year"),
   YEAR_OF_WEEK("yearOfWeek", "yow"),

@@ -63,6 +63,12 @@ public class ServerResponse {
 
   public int getResponseDelayMs() {
     if (_receiveDataTableTimeMs != 0) {
+      if (_submitRequestTimeMs == 0) {
+        // This can happen if there's a race condition where the response (DataTable) is received before the request
+        // is marked as submitted i.e if request is sent to server but there's a delay in calling the callback
+        // in _channel.writeAndFlush(cb).
+        return 0;
+      }
       return (int) (_receiveDataTableTimeMs - _submitRequestTimeMs);
     } else {
       return -1;

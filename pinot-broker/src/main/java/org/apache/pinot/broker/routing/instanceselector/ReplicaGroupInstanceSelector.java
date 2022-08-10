@@ -18,12 +18,19 @@
  */
 package org.apache.pinot.broker.routing.instanceselector;
 
+import com.google.common.util.concurrent.RateLimiter;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
+import javax.annotation.Nullable;
+import org.apache.pinot.broker.routing.adaptiveserverselector.AdaptiveServerSelector;
 import org.apache.pinot.common.metrics.BrokerMetrics;
 import org.apache.pinot.common.utils.HashUtil;
 import org.apache.pinot.core.util.QueryOptionsUtils;
+import org.apache.pinot.spi.utils.Pair;
+import org.slf4j.LoggerFactory;
 
 
 /**
@@ -49,32 +56,80 @@ import org.apache.pinot.core.util.QueryOptionsUtils;
  * BalancedInstanceSelector.
  */
 public class ReplicaGroupInstanceSelector extends BaseInstanceSelector {
+  private final RateLimiter _queryLogRateLimiter;
+  private static final org.slf4j.Logger LOGGER = LoggerFactory.getLogger(ReplicaGroupInstanceSelector.class);
+  private final Random _random = new Random();
 
-  public ReplicaGroupInstanceSelector(String tableNameWithType, BrokerMetrics brokerMetrics) {
-    super(tableNameWithType, brokerMetrics);
+  public ReplicaGroupInstanceSelector(String tableNameWithType, BrokerMetrics brokerMetrics,
+      AdaptiveServerSelector adaptiveServerSelector) {
+    super(tableNameWithType, brokerMetrics, adaptiveServerSelector);
+    _queryLogRateLimiter = RateLimiter.create(0.0166666667);
   }
 
   @Override
   Map<String, String> select(List<String> segments, int requestId,
-      Map<String, List<String>> segmentToEnabledInstancesMap, Map<String, String> queryOptions) {
+      Map<String, List<String>> segmentToEnabledInstancesMap, Map<String, String> queryOptions,
+      @Nullable AdaptiveServerSelector adaptiveServerSelector) {
     Map<String, String> segmentToSelectedInstanceMap = new HashMap<>(HashUtil.getHashMapCapacity(segments.size()));
     int replicaOffset = 0;
     Integer replicaGroup = QueryOptionsUtils.getNumReplicaGroupsToQuery(queryOptions);
     int numReplicaGroupsToQuery = replicaGroup == null ? 1 : replicaGroup;
+
+    List<Pair<String, Double>> serverRankList = new ArrayList<>();
+    List<String> actualServerRankList = new ArrayList<>();
+    if (adaptiveServerSelector != null) {
+      // We fetch serverRankList before looping through all the segments. This is important to make sure that we pick
+      // the least amount of instances for a query by having one snapshot of rankings.
+      serverRankList = adaptiveServerSelector.fetchServerRanking();
+      for (Pair<String, Double> p : serverRankList) {
+        actualServerRankList.add(p.getFirst());
+      }
+
+//      if (_queryLogRateLimiter.tryAcquire()) {
+//        LOGGER.info("Printing server scores according to rank.");
+//        for (Pair<String, Double> p : serverRankList) {
+//          LOGGER.info("server={}, count={}", p.getFirst(), p.getSecond());
+//        }
+//      }
+    }
+
     for (String segment : segments) {
-      List<String> enabledInstances = segmentToEnabledInstancesMap.get(segment);
       // NOTE: enabledInstances can be null when there is no enabled instances for the segment, or the instance selector
       // has not been updated (we update all components for routing in sequence)
-      if (enabledInstances != null) {
-        int numEnabledInstances = enabledInstances.size();
-        int instanceToSelect = (requestId + replicaOffset) % numEnabledInstances;
-        segmentToSelectedInstanceMap.put(segment, enabledInstances.get(instanceToSelect));
-        if (numReplicaGroupsToQuery > numEnabledInstances) {
-          numReplicaGroupsToQuery = numEnabledInstances;
-        }
-        replicaOffset = (replicaOffset + 1) % numReplicaGroupsToQuery;
+      List<String> enabledInstances = segmentToEnabledInstancesMap.get(segment);
+      if (enabledInstances == null) {
+        continue;
       }
+
+      // Default logic
+      int numEnabledInstances = enabledInstances.size();
+      int instanceIdx = (requestId + replicaOffset) % numEnabledInstances;
+      String selectedInstance = enabledInstances.get(instanceIdx);
+
+
+      if (actualServerRankList.size() > 0) {
+        int minIdx = Integer.MAX_VALUE;
+        for (int ii = 0; ii < numEnabledInstances; ii++) {
+          int idx = actualServerRankList.indexOf(enabledInstances.get(ii));
+          if (idx == -1) {
+            // Let's use the round-robin approach until stats for all servers are populated.
+            selectedInstance = enabledInstances.get(instanceIdx);
+            break;
+          }
+          if (idx < minIdx) {
+            minIdx = idx;
+            selectedInstance = enabledInstances.get((ii + replicaOffset) % numEnabledInstances);
+          }
+        }
+      }
+
+      if (numReplicaGroupsToQuery > numEnabledInstances) {
+        numReplicaGroupsToQuery = numEnabledInstances;
+      }
+      segmentToSelectedInstanceMap.put(segment, selectedInstance);
+      replicaOffset = (replicaOffset + 1) % numReplicaGroupsToQuery;
     }
+
     return segmentToSelectedInstanceMap;
   }
 }
