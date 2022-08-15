@@ -238,7 +238,6 @@ public class CommonConstants {
     public static final String MULTI_STAGE_BROKER_REQUEST_HANDLER_TYPE = "multistage";
     public static final String DEFAULT_BROKER_REQUEST_HANDLER_TYPE = NETTY_BROKER_REQUEST_HANDLER_TYPE;
 
-
     public static final String BROKER_TLS_PREFIX = "pinot.broker.tls";
     public static final String BROKER_NETTY_PREFIX = "pinot.broker.netty";
     public static final String BROKER_NETTYTLS_ENABLED = "pinot.broker.nettytls.enabled";
@@ -319,6 +318,47 @@ public class CommonConstants {
       public static final double DEFAULT_RETRY_DELAY_FACTOR = 2.0;
       public static final String CONFIG_OF_MAX_RETRIES = "pinot.broker.failure.detector.max.retries";
       public static final int DEFAULT_MAX_RETIRES = 10;
+    }
+
+    // Configs related to AdaptiveServerSelection.
+    public static class AdaptiveServerSelector {
+      public enum Type {
+        // Adaptive Selectors are not used. Use default round-robin
+        NO_OP,
+
+        // Use selector that routes to servers based on number of inflight requests
+        NUM_INFLIGHT_REQ,
+
+        // Use selector that routes to servers based on observed latencies.
+        LATENCY,
+
+        // Uses both latency and numInFlightRequests to select the best server.
+        HYBRID
+      }
+
+      public static final String CONFIG_OF_TYPE = "pinot.broker.adaptive.server.selector.type";
+      public static final String TYPE = Type.NO_OP.name();
+
+      public static final String CONFIG_OF_ENABLE_STATS_COLLETION = "pinot.broker.adaptive.server.selector.enable"
+          + ".stats.collection";
+      public static final boolean ENABLE_STATS_COLLECTION = false;
+
+      // Parameters to tune exponential moving average.
+      public static final String CONFIG_OF_ALPHA = "pinot.broker.adaptive.server.selector.alpha";
+      public static final double ALPHA = 0.666;
+      public static final String CONFIG_OF_AUTODECAY_WINDOW_MS =
+          "pinot.broker.adaptive.server.selector.autodecay.window.ms";
+      public static final long AUTODECAY_WINDOW_MS = 10 * 1000;
+      public static final String CONFIG_OF_WARMUP_COUNT = "pinot.broker.adaptive.server.selector.warmup.count";
+      public static final int WARMUP_COUNT = 0;
+      public static final String CONFIG_OF_AVG_INITIALIZATION_VAL = "pinot.broker.adaptive.server.selector.avg"
+          + ".initialization.val";
+      public static final double AVG_INITIALIZATION_VAL = 1.0;
+
+      // Parameters related to hybrid selector.
+      public static final String CONFIG_OF_HYBRID_SELECTOR_EXPONENT = "pinot.broker.adaptive.server.selector.hybrid"
+          + ".selector.exponent";
+      public static final int HYBRID_SELECTOR_EXPONENT = 3;
     }
   }
 

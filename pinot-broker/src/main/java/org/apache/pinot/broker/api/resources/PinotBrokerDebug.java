@@ -27,6 +27,8 @@ import io.swagger.annotations.ApiResponses;
 import io.swagger.annotations.Authorization;
 import io.swagger.annotations.SecurityDefinition;
 import io.swagger.annotations.SwaggerDefinition;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -40,10 +42,13 @@ import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.pinot.broker.routing.BrokerRoutingManager;
 import org.apache.pinot.broker.routing.timeboundary.TimeBoundaryInfo;
 import org.apache.pinot.core.routing.RoutingTable;
 import org.apache.pinot.core.transport.ServerInstance;
+import org.apache.pinot.core.transport.server.routing.stats.ServerRoutingStatsEntry;
+import org.apache.pinot.core.transport.server.routing.stats.ServerRoutingStatsManager;
 import org.apache.pinot.spi.config.table.TableType;
 import org.apache.pinot.spi.utils.builder.TableNameBuilder;
 import org.apache.pinot.sql.parsers.CalciteSqlCompiler;
@@ -60,6 +65,9 @@ public class PinotBrokerDebug {
 
   @Inject
   private BrokerRoutingManager _routingManager;
+
+  @Inject
+  private ServerRoutingStatsManager _serverRoutingStatsManager;
 
   @GET
   @Produces(MediaType.APPLICATION_JSON)
@@ -135,5 +143,34 @@ public class PinotBrokerDebug {
     } else {
       throw new WebApplicationException("Cannot find routing for query: " + query, Response.Status.NOT_FOUND);
     }
+  }
+
+  /**
+   * API to get a snapshot of ServerRoutingStatsEntry entry for all the servers.
+   * @return map with server name as key and server stats as value.
+   */
+  @GET
+  @Produces(MediaType.APPLICATION_JSON)
+  @Path("/debug/serverRoutingStats")
+  @ApiOperation(value = "Get the routing stats for all the servers")
+  @ApiResponses(value = {
+      @ApiResponse(code = 200, message = "Server routing Stats"),
+      @ApiResponse(code = 404, message = "Server routing Stats not found"),
+      @ApiResponse(code = 500, message = "Internal server error")
+  })
+  public Map<String, String> getServerRoutingStats() {
+    // TODO(Vivek): Test this is QuickStart.
+    Map<String, String> serverRoutingStatsMap = new HashMap<>();
+    Iterator<Map.Entry<String, ServerRoutingStatsEntry>> serverItr =
+        _serverRoutingStatsManager.getServerRoutingStatsItr();
+
+    while (serverItr.hasNext()) {
+      Map.Entry<String, ServerRoutingStatsEntry> entry = serverItr.next();
+      String server = entry.getKey();
+      String serverStats = ToStringBuilder.reflectionToString(entry.getValue());
+      serverRoutingStatsMap.put(server, serverStats);
+    }
+
+    return serverRoutingStatsMap;
   }
 }

@@ -21,35 +21,49 @@ package org.apache.pinot.broker.routing.instanceselector;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import javax.annotation.Nullable;
+import org.apache.pinot.broker.routing.adaptiveserverselector.AdaptiveServerSelector;
 import org.apache.pinot.common.metrics.BrokerMetrics;
 import org.apache.pinot.common.utils.HashUtil;
 
 
 /**
  * Instance selector to balance the number of segments served by each selected server instance.
- * <p>The selection algorithm will always evenly distribute the traffic to all replicas of each segment, and will try
- * to select different replica id for each segment. The algorithm is very light-weight and will do best effort to
- * balance the number of segments served by each selected server instance.
+ * <p>If AdaptiveServerSelection is enabled, the request is routed to the best available server for a segment
+ * when it is processed below. Depending on how the servers are performing, the query could be routed to a single server
+ * or all available servers.
+ * <p>If AdaptiveServerSelection is disabled, the selection algorithm will always evenly distribute the traffic to all
+ * replicas of each segment, and will try to select different replica id for each segment. The algorithm is very
+ * light-weight and will do best effort to balance the number of segments served by each selected server instance.
  */
 public class BalancedInstanceSelector extends BaseInstanceSelector {
 
-  public BalancedInstanceSelector(String tableNameWithType, BrokerMetrics brokerMetrics) {
-    super(tableNameWithType, brokerMetrics);
+  public BalancedInstanceSelector(String tableNameWithType, BrokerMetrics brokerMetrics,
+      @Nullable AdaptiveServerSelector adaptiveServerSelector) {
+    super(tableNameWithType, brokerMetrics, adaptiveServerSelector);
   }
 
   @Override
   Map<String, String> select(List<String> segments, int requestId,
-      Map<String, List<String>> segmentToEnabledInstancesMap, Map<String, String> queryOptions) {
+      Map<String, List<String>> segmentToEnabledInstancesMap, Map<String, String> queryOptions,
+      @Nullable AdaptiveServerSelector adaptiveServerSelector) {
     Map<String, String> segmentToSelectedInstanceMap = new HashMap<>(HashUtil.getHashMapCapacity(segments.size()));
     for (String segment : segments) {
       List<String> enabledInstances = segmentToEnabledInstancesMap.get(segment);
       // NOTE: enabledInstances can be null when there is no enabled instances for the segment, or the instance selector
       // has not been updated (we update all components for routing in sequence)
-      if (enabledInstances != null) {
-        int numEnabledInstances = enabledInstances.size();
-        segmentToSelectedInstanceMap.put(segment, enabledInstances.get(requestId++ % numEnabledInstances));
+      if (enabledInstances == null) {
+        continue;
       }
+
+      String selectedServer = enabledInstances.get(requestId++ % enabledInstances.size());
+      if (adaptiveServerSelector != null) {
+        selectedServer = adaptiveServerSelector.select(enabledInstances);
+      }
+
+      segmentToSelectedInstanceMap.put(segment, selectedServer);
     }
+
     return segmentToSelectedInstanceMap;
   }
 }
