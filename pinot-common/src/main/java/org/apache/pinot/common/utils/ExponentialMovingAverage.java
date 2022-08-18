@@ -37,7 +37,7 @@ public class ExponentialMovingAverage {
   /**
    * Constructor
    *
-   * @param alpha Determines how much weightage should be given to the new value.
+   * @param alpha Determines how much weightage should be given to the new value. Can only take a value between 0 and 1.
    * @param autoDecayWindowMs Time interval to periodically decay the average if no updates are received. For
    *                          example if autoDecayWindowMs = 30s, if average is not updated for a period of 30
    *                          seconds, we automatically update the average to 0.0 with a weightage of alpha.
@@ -48,11 +48,16 @@ public class ExponentialMovingAverage {
       double avgInitializationVal) {
     _alpha = alpha;
     _autoDecayWindowMs = autoDecayWindowMs;
-    _warmUpCount = warmUpCount;
-
     _currentCount = 0;
     _lastUpdatedTimeMs = 0;
+
+    Preconditions.checkState(alpha >= 0.0 && alpha <= 1.0, "Alpha should be between 0 and 1");
+
+    Preconditions.checkState(avgInitializationVal >= 0.0, "avgInitializationVal is negative.");
     _average = avgInitializationVal;
+
+    Preconditions.checkState(warmUpCount >= 0.0, "warmUpCount is negative.");
+    _warmUpCount = warmUpCount;
 
     if (_autoDecayWindowMs > 0) {
       // Create a timer to automatically decay the average if updates are not performed in the last _autoDecayWindowMs.
@@ -86,7 +91,7 @@ public class ExponentialMovingAverage {
     _lastUpdatedTimeMs = System.currentTimeMillis();
 
     ++_currentCount;
-    if (_currentCount < _warmUpCount) {
+    if (_currentCount <= _warmUpCount) {
       return _average;
     }
 
