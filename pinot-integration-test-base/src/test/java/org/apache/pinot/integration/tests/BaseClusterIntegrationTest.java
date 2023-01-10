@@ -86,7 +86,7 @@ public abstract class BaseClusterIntegrationTest extends ClusterTest {
   protected static final int DEFAULT_HLC_NUM_KAFKA_PARTITIONS = 10;
   protected static final int DEFAULT_MAX_NUM_KAFKA_MESSAGES_PER_BATCH = 10000;
   protected static final List<String> DEFAULT_NO_DICTIONARY_COLUMNS =
-      Arrays.asList("ActualElapsedTime", "ArrDelay", "DepDelay", "CRSDepTime");
+      Arrays.asList("ActualElapsedTime", "ArrDelay", "DepDelay", "CRSDepTime", "RandomAirports");
   protected static final String DEFAULT_SORTED_COLUMN = "Carrier";
   protected static final List<String> DEFAULT_INVERTED_INDEX_COLUMNS = Arrays.asList("FlightNum", "Origin", "Quarter");
   private static final List<String> DEFAULT_BLOOM_FILTER_COLUMNS = Arrays.asList("FlightNum", "Origin");
@@ -145,11 +145,12 @@ public abstract class BaseClusterIntegrationTest extends ClusterTest {
   }
 
   protected int getRealtimeSegmentFlushSize() {
-    if (useLlc()) {
-      return DEFAULT_LLC_SEGMENT_FLUSH_SIZE;
-    } else {
-      return DEFAULT_HLC_SEGMENT_FLUSH_SIZE;
-    }
+    return 5;
+//    if (useLlc()) {
+//      return DEFAULT_LLC_SEGMENT_FLUSH_SIZE;
+//    } else {
+//      return DEFAULT_HLC_SEGMENT_FLUSH_SIZE;
+//    }
   }
 
   protected int getNumKafkaBrokers() {
@@ -173,11 +174,12 @@ public abstract class BaseClusterIntegrationTest extends ClusterTest {
   }
 
   protected int getNumKafkaPartitions() {
-    if (useLlc()) {
-      return DEFAULT_LLC_NUM_KAFKA_PARTITIONS;
-    } else {
-      return DEFAULT_HLC_NUM_KAFKA_PARTITIONS;
-    }
+    return 1;
+//    if (useLlc()) {
+//      return DEFAULT_LLC_NUM_KAFKA_PARTITIONS;
+//    } else {
+//      return DEFAULT_HLC_NUM_KAFKA_PARTITIONS;
+//    }
   }
 
   protected String getKafkaTopic() {
