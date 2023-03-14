@@ -343,5 +343,55 @@
         "sql": "SELECT /*+ skipLeafStageGroupByAggregation */ double_col, sum(int_col) FROM {tbl} WHERE int_col > 3 AND double_col > 1.0 GROUP BY double_col"
       }
     ]
+  },
+  "big_decimal_aggregate": {
+    "tables": {
+      "tbl": {
+        "schema": [
+          {"name": "big_decimal_col", "type": "BIG_DECIMAL"},
+          {"name": "double_col", "type": "DOUBLE"},
+          {"name": "string_col", "type": "STRING"}
+        ],
+        "inputs": [
+          ["92233720368547758071", 92233720368547758071, "a", true],
+          ["92233720368547758071.0000000001", 92233720368547758071.0000000001, "a", true],
+          ["92233720368547758075.0001212001", 92233720368547758075.0001212001, "b", false],
+          ["92233720223372031212.2036854775", 92233720223372031212.2036854775, ",b", false],
+          ["372031000000000120312.2233720", 372031000000000120312.2233720, "c", false],
+          ["92233720368547758077", 92233720368547758077, "c", false],
+          ["92233720368547758079", 92233720368547758079, "c", true]
+        ]
+      }
+    },
+    "queries": [
+      {
+        "description": "sum on bigdecimal. Note that since ",
+        "sql": "SELECT sum(big_decimal_col) FROM {tbl}",
+        "outputs": [
+          ["9.25433322066111E+20"]
+        ]
+      },
+      {
+        "description": "max on bigdecimal",
+        "sql": "SELECT max(big_decimal_col) FROM {tbl}",
+        "outputs": [
+          ["3.720310000000001E+20"]
+        ]
+      },
+      {
+        "description": "min on bigdecimal",
+        "sql": "SELECT min(big_decimal_col) FROM {tbl}",
+        "outputs": [
+          ["9.223372022337203E+19"]
+        ]
+      },
+      {
+        "description": "avg on bigdecimal",
+        "sql": "SELECT avg(big_decimal_col) FROM {tbl}",
+        "outputs": [
+          ["1.3220476029515871E+20"]
+        ]
+      }
+    ]
   }
 }

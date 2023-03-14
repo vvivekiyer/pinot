@@ -318,7 +318,11 @@ public class LeafStageTransferableBlockOperator extends MultiStageOperator {
       return false;
     }
     for (int i = 0; i < desiredTypes.length; i++) {
-      if (desiredTypes[i] != givenTypes[i] && !givenTypes[i].isSuperTypeOf(desiredTypes[i])) {
+      boolean isBigDecimalCompatible =
+          desiredTypes[i] == DataSchema.ColumnDataType.BIG_DECIMAL && desiredTypes[i].isSuperTypeOf(givenTypes[i]);
+
+      if (desiredTypes[i] != givenTypes[i] && !isBigDecimalCompatible && !givenTypes[i].isSuperTypeOf(
+          desiredTypes[i])) {
         return false;
       }
     }

@@ -273,7 +273,8 @@ public class DataSchema {
     BYTES_ARRAY(new byte[0][]);
 
     private static final EnumSet<ColumnDataType> NUMERIC_TYPES = EnumSet.of(INT, LONG, FLOAT, DOUBLE, BIG_DECIMAL);
-    private static final Ordering<ColumnDataType> NUMERIC_TYPE_ORDERING = Ordering.explicit(INT, LONG, FLOAT, DOUBLE);
+    private static final Ordering<ColumnDataType> NUMERIC_TYPE_ORDERING = Ordering.explicit(INT, LONG, FLOAT, DOUBLE,
+        BIG_DECIMAL);
     private static final EnumSet<ColumnDataType> INTEGRAL_TYPES = EnumSet.of(INT, LONG);
     private static final EnumSet<ColumnDataType> ARRAY_TYPES =
         EnumSet.of(INT_ARRAY, LONG_ARRAY, FLOAT_ARRAY, DOUBLE_ARRAY, STRING_ARRAY, BOOLEAN_ARRAY, TIMESTAMP_ARRAY,
@@ -343,12 +344,12 @@ public class DataSchema {
      * @see DataSchema.ColumnDataType#convert(Object)
      */
     public boolean isSuperTypeOf(ColumnDataType subTypeCandidate) {
-      if (this.isNumber() && subTypeCandidate.isNumber() && this != BIG_DECIMAL && subTypeCandidate != BIG_DECIMAL) {
+      if (this.isNumber() && subTypeCandidate.isNumber() && subTypeCandidate != BIG_DECIMAL) {
         // NUMBER subtype check using type hoisting rules defined in NUMERIC_TYPE_ORDERING
         return NUMERIC_TYPE_ORDERING.max(this, subTypeCandidate) == this;
       } else if (subTypeCandidate == BOOLEAN) {
         // BOOLEAN type is sub-type of any number type, checking whether it is equal to 1.
-        return this == subTypeCandidate || (this.isNumber() && this != BIG_DECIMAL);
+        return this == subTypeCandidate || this.isNumber();
       } else {
         return this == subTypeCandidate;
       }
@@ -396,7 +397,8 @@ public class DataSchema {
         case DOUBLE:
           return ((Number) value).doubleValue();
         case BIG_DECIMAL:
-          return (BigDecimal) value;
+          String numStr = value.toString();
+          return new BigDecimal(numStr);
         case BOOLEAN:
           return ((Number) value).intValue() == 1;
         case TIMESTAMP:

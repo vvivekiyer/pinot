@@ -133,7 +133,8 @@ public class DataBlockBuilder {
             byteBuffer.putDouble(((Number) value).doubleValue());
             break;
           case BIG_DECIMAL:
-            setColumn(rowBuilder, byteBuffer, (BigDecimal) value);
+            String numStr = value.toString();
+            setColumn(rowBuilder, byteBuffer, new BigDecimal(numStr));
             break;
           case BOOLEAN:
             byteBuffer.putInt(((Boolean) value) ? 1 : 0);
