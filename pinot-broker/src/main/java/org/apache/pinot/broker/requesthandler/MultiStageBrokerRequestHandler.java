@@ -21,8 +21,10 @@ package org.apache.pinot.broker.requesthandler;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import javax.annotation.Nullable;
 import org.apache.calcite.jdbc.CalciteSchemaBuilder;
@@ -51,6 +53,7 @@ import org.apache.pinot.query.catalog.PinotCatalog;
 import org.apache.pinot.query.mailbox.MailboxService;
 import org.apache.pinot.query.mailbox.MultiplexingMailboxService;
 import org.apache.pinot.query.planner.QueryPlan;
+import org.apache.pinot.query.planner.StageMetadata;
 import org.apache.pinot.query.routing.WorkerManager;
 import org.apache.pinot.query.runtime.blocks.TransferableBlock;
 import org.apache.pinot.query.service.QueryConfig;
@@ -167,6 +170,25 @@ public class MultiStageBrokerRequestHandler extends BaseBrokerRequestHandler {
       _brokerMetrics.addMeteredGlobalValue(BrokerMeter.REQUEST_COMPILATION_EXCEPTIONS, 1);
       requestContext.setErrorCode(QueryException.SQL_PARSING_ERROR_CODE);
       return new BrokerResponseNative(QueryException.getException(QueryException.SQL_PARSING_ERROR, e));
+    }
+
+    if (false) {
+      // TODO(Vivek): Does not handle ACL for explain plan queries.
+      // Perform table level access control
+      Set<String> tableNameSet = new HashSet<>();
+      for (Map.Entry<Integer, StageMetadata> entry: queryPlan.getStageMetadataMap().entrySet()) {
+        List<String> tableNames = entry.getValue().getScannedTables();
+
+        tableNameSet.addAll(tableNames);
+      }
+      boolean hasAccess = true;
+      for (String entry : tableNameSet) {
+        // Call hasAccess for each table.
+      }
+
+      if (!hasAccess) {
+        // Error handling.
+      }
     }
 
     boolean traceEnabled = Boolean.parseBoolean(
