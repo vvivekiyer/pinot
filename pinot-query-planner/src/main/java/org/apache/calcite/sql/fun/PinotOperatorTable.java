@@ -62,6 +62,7 @@ public class PinotOperatorTable extends SqlStdOperatorTable {
   public static final SqlAggFunction BOOL_OR = PinotBoolOrAggregateFunction.INSTANCE;
   public static final SqlAggFunction SKEWNESS = PinotSkewnessAggregateFunction.INSTANCE;
   public static final SqlAggFunction KURTOSIS = PinotKurtosisAggregateFunction.INSTANCE;
+  public static final SqlAggFunction SUM_MV = PinotSumMVAggregateFunction.INSTANCE;
 
   // TODO: clean up lazy init by using Suppliers.memorized(this::computeInstance) and make getter wrapped around
   // supplier instance. this should replace all lazy init static objects in the codebase

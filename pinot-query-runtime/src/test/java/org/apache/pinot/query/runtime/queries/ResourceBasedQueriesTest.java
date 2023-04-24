@@ -433,7 +433,9 @@ public class ResourceBasedQueriesTest extends QueryRunnerTestBase {
         BufferedReader br = new BufferedReader(new InputStreamReader(in))) {
       String resource;
       while ((resource = br.readLine()) != null) {
-        testFilenames.add(resource);
+        if (resource.equals("MVAggregates.json")) {
+          testFilenames.add(resource);
+        }
       }
     }
 

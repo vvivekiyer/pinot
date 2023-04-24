@@ -1,0 +1,39 @@
+{
+  "mv_aggregates_tests": {
+    "psql": "7.8.1",
+    "tables": {
+      "tbl1": {
+        "schema": [
+          {"name": "strCol", "type": "STRING"},
+          {"name": "intCol", "type": "INT"},
+          {"name": "mvStrCol", "type": "STRING", "isSingleValue": false},
+          {"name": "mvIntCol", "type": "INT", "isSingleValue": false}
+        ],
+        "inputs": [
+          ["a", 3, ["fig", "dig", "big"], [100, 200, 300]],
+          ["b", 2, ["rig"], [300]],
+          ["c", 5, ["jig", "jug", "mug"], [400, 500]],
+          ["a", 1, ["roll", "fig"], [900, 100]]
+        ]
+      }
+    },
+    "queries": [
+      {
+        "description": "Simple sum_mv aggregation function",
+        "sql": "select sum_mv(mvIntCol) from {tbl1}",
+        "outputs": [
+          [2800]
+        ]
+      },
+      {
+        "description": "sum_mv with aggregation and group by",
+        "sql": "select strCol, sum_mv(mvIntCol) from {tbl1} group by strCol order by strCol",
+        "outputs": [
+          ["a", 1600],
+          ["b", 300],
+          ["c", 900]
+        ]
+      }
+    ]
+  }
+}

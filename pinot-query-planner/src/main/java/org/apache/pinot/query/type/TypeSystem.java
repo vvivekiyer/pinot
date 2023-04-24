@@ -70,4 +70,13 @@ public class TypeSystem extends RelDataTypeSystemImpl {
       }
     }
   }
+
+  @Override
+  public RelDataType deriveSumType(RelDataTypeFactory typeFactory,
+      RelDataType argumentType) {
+    if (SqlTypeUtil.isArray(argumentType)) {
+      return super.deriveSumType(typeFactory, argumentType.getComponentType());
+    }
+    return super.deriveSumType(typeFactory, argumentType);
+  }
 }

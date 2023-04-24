@@ -296,24 +296,32 @@ public class DataSchema {
 
     public DataType toDataType() {
       switch (this) {
+        case INT_ARRAY:
         case INT:
           return DataType.INT;
+        case LONG_ARRAY:
         case LONG:
           return DataType.LONG;
+        case FLOAT_ARRAY:
         case FLOAT:
           return DataType.FLOAT;
+        case DOUBLE_ARRAY:
         case DOUBLE:
           return DataType.DOUBLE;
         case BIG_DECIMAL:
           return DataType.BIG_DECIMAL;
+        case BOOLEAN_ARRAY:
         case BOOLEAN:
           return DataType.BOOLEAN;
+        case TIMESTAMP_ARRAY:
         case TIMESTAMP:
           return DataType.TIMESTAMP;
+        case STRING_ARRAY:
         case STRING:
           return DataType.STRING;
         case JSON:
           return DataType.JSON;
+        case BYTES_ARRAY:
         case BYTES:
           return DataType.BYTES;
         case UNKNOWN:
