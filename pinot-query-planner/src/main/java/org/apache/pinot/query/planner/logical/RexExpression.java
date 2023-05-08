@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.apache.calcite.rel.core.AggregateCall;
+import org.apache.calcite.rel.hint.RelHint;
 import org.apache.calcite.rex.RexCall;
 import org.apache.calcite.rex.RexInputRef;
 import org.apache.calcite.rex.RexLiteral;
@@ -69,17 +70,20 @@ public interface RexExpression {
       default:
         List<RexExpression> operands =
             rexCall.getOperands().stream().map(RexExpression::toRexExpression).collect(Collectors.toList());
+
+        // RexExpression functions called from here cannot be aggregation functions.
         return new RexExpression.FunctionCall(rexCall.getKind(),
             RelToStageConverter.convertToFieldSpecDataType(rexCall.getType()),
-            rexCall.getOperator().getName(), operands);
+            rexCall.getOperator().getName(), operands, false);
     }
   }
 
-  static RexExpression toRexExpression(AggregateCall aggCall) {
+  static RexExpression toRexExpression(AggregateCall aggCall, boolean isLeafStageAggregation) {
     List<RexExpression> operands = aggCall.getArgList().stream().map(InputRef::new).collect(Collectors.toList());
+
     return new RexExpression.FunctionCall(aggCall.getAggregation().getKind(),
         RelToStageConverter.convertToFieldSpecDataType(aggCall.getType()), aggCall.getAggregation().getName(),
-        operands);
+        operands, isLeafStageAggregation);
   }
 
   static Object toRexValue(FieldSpec.DataType dataType, Comparable value) {
@@ -182,16 +186,20 @@ public interface RexExpression {
     // the list of RexExpressions that represents the operands to the function.
     @ProtoProperties
     private List<RexExpression> _functionOperands;
+    // The stage of aggregation.
+    @ProtoProperties
+    private boolean _isLeafStageAggregation;
 
     public FunctionCall() {
     }
 
     public FunctionCall(SqlKind sqlKind, FieldSpec.DataType type, String functionName,
-        List<RexExpression> functionOperands) {
+        List<RexExpression> functionOperands, boolean isLeafStageAggregation) {
       _sqlKind = sqlKind;
       _dataType = type;
       _functionName = functionName;
       _functionOperands = functionOperands;
+      _isLeafStageAggregation = isLeafStageAggregation;
     }
 
     public String getFunctionName() {
@@ -204,6 +212,10 @@ public interface RexExpression {
 
     public SqlKind getKind() {
       return _sqlKind;
+    }
+
+    public boolean isLeafStageAggregation() {
+      return _isLeafStageAggregation;
     }
 
     public FieldSpec.DataType getDataType() {

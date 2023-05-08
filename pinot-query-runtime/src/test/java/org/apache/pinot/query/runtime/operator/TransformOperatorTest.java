@@ -121,9 +121,9 @@ public class TransformOperatorTest {
     RexExpression.InputRef ref1 = new RexExpression.InputRef(1);
     List<RexExpression> functionOperands = ImmutableList.of(ref0, ref1);
     RexExpression.FunctionCall plus01 =
-        new RexExpression.FunctionCall(PLUS, FieldSpec.DataType.DOUBLE, "plus", functionOperands);
+        new RexExpression.FunctionCall(PLUS, FieldSpec.DataType.DOUBLE, "plus", functionOperands, false);
     RexExpression.FunctionCall minus01 =
-        new RexExpression.FunctionCall(MINUS, FieldSpec.DataType.DOUBLE, "minus", functionOperands);
+        new RexExpression.FunctionCall(MINUS, FieldSpec.DataType.DOUBLE, "minus", functionOperands, false);
     DataSchema resultSchema = new DataSchema(new String[]{"plusR", "minusR"},
         new DataSchema.ColumnDataType[]{DataSchema.ColumnDataType.DOUBLE, DataSchema.ColumnDataType.DOUBLE});
     TransformOperator op =
@@ -150,9 +150,9 @@ public class TransformOperatorTest {
     RexExpression.InputRef ref1 = new RexExpression.InputRef(1);
     List<RexExpression> functionOperands = ImmutableList.of(ref0, ref1);
     RexExpression.FunctionCall plus01 =
-        new RexExpression.FunctionCall(PLUS, FieldSpec.DataType.DOUBLE, "plus", functionOperands);
+        new RexExpression.FunctionCall(PLUS, FieldSpec.DataType.DOUBLE, "plus", functionOperands, false);
     RexExpression.FunctionCall minus01 =
-        new RexExpression.FunctionCall(MINUS, FieldSpec.DataType.DOUBLE, "minus", functionOperands);
+        new RexExpression.FunctionCall(MINUS, FieldSpec.DataType.DOUBLE, "minus", functionOperands, false);
     DataSchema resultSchema = new DataSchema(new String[]{"plusR", "minusR"},
         new DataSchema.ColumnDataType[]{DataSchema.ColumnDataType.DOUBLE, DataSchema.ColumnDataType.DOUBLE});
     TransformOperator op =

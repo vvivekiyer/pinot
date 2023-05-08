@@ -191,7 +191,7 @@ public class FilterOperatorTest {
         OperatorTestUtil.block(inputSchema, new Object[]{true, true}, new Object[]{false, false},
             new Object[]{true, false}));
     RexExpression.FunctionCall andCall = new RexExpression.FunctionCall(SqlKind.AND, FieldSpec.DataType.BOOLEAN, "AND",
-        ImmutableList.of(new RexExpression.InputRef(0), new RexExpression.InputRef(1)));
+        ImmutableList.of(new RexExpression.InputRef(0), new RexExpression.InputRef(1)), false);
 
     FilterOperator op =
         new FilterOperator(OperatorTestUtil.getDefaultContext(), _upstreamOperator, inputSchema, andCall);
@@ -212,7 +212,7 @@ public class FilterOperatorTest {
         OperatorTestUtil.block(inputSchema, new Object[]{true, true}, new Object[]{false, false},
             new Object[]{true, false}));
     RexExpression.FunctionCall orCall = new RexExpression.FunctionCall(SqlKind.OR, FieldSpec.DataType.BOOLEAN, "OR",
-        ImmutableList.of(new RexExpression.InputRef(0), new RexExpression.InputRef(1)));
+        ImmutableList.of(new RexExpression.InputRef(0), new RexExpression.InputRef(1)),false);
 
     FilterOperator op =
         new FilterOperator(OperatorTestUtil.getDefaultContext(), _upstreamOperator, inputSchema, orCall);
@@ -235,7 +235,7 @@ public class FilterOperatorTest {
         OperatorTestUtil.block(inputSchema, new Object[]{true, true}, new Object[]{false, false},
             new Object[]{true, false}));
     RexExpression.FunctionCall notCall = new RexExpression.FunctionCall(SqlKind.NOT, FieldSpec.DataType.BOOLEAN, "NOT",
-        ImmutableList.of(new RexExpression.InputRef(0)));
+        ImmutableList.of(new RexExpression.InputRef(0)), false);
 
     FilterOperator op =
         new FilterOperator(OperatorTestUtil.getDefaultContext(), _upstreamOperator, inputSchema, notCall);
@@ -256,7 +256,7 @@ public class FilterOperatorTest {
         .thenReturn(OperatorTestUtil.block(inputSchema, new Object[]{1, 2}, new Object[]{3, 2}, new Object[]{1, 1}));
     RexExpression.FunctionCall greaterThan =
         new RexExpression.FunctionCall(SqlKind.GREATER_THAN, FieldSpec.DataType.BOOLEAN, "greaterThan",
-            ImmutableList.of(new RexExpression.InputRef(0), new RexExpression.InputRef(1)));
+            ImmutableList.of(new RexExpression.InputRef(0), new RexExpression.InputRef(1)), false);
     FilterOperator op =
         new FilterOperator(OperatorTestUtil.getDefaultContext(), _upstreamOperator, inputSchema, greaterThan);
     TransferableBlock dataBlock = op.getNextBlock();
@@ -277,7 +277,7 @@ public class FilterOperatorTest {
     RexExpression.FunctionCall startsWith =
         new RexExpression.FunctionCall(SqlKind.OTHER, FieldSpec.DataType.BOOLEAN, "startsWith",
             ImmutableList.of(new RexExpression.InputRef(0),
-                new RexExpression.Literal(FieldSpec.DataType.STRING, "star")));
+                new RexExpression.Literal(FieldSpec.DataType.STRING, "star")), false);
     FilterOperator op =
         new FilterOperator(OperatorTestUtil.getDefaultContext(), _upstreamOperator, inputSchema, startsWith);
     TransferableBlock dataBlock = op.getNextBlock();
@@ -299,7 +299,7 @@ public class FilterOperatorTest {
     RexExpression.FunctionCall startsWith =
         new RexExpression.FunctionCall(SqlKind.OTHER, FieldSpec.DataType.BOOLEAN, "startsWithError",
             ImmutableList.of(new RexExpression.InputRef(0),
-                new RexExpression.Literal(FieldSpec.DataType.STRING, "star")));
+                new RexExpression.Literal(FieldSpec.DataType.STRING, "star")), false);
     FilterOperator op =
         new FilterOperator(OperatorTestUtil.getDefaultContext(), _upstreamOperator, inputSchema, startsWith);
   }

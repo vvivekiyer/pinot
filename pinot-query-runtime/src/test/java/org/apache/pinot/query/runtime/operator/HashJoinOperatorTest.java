@@ -344,7 +344,8 @@ public class HashJoinOperatorTest {
     functionOperands.add(new RexExpression.InputRef(1));
     functionOperands.add(new RexExpression.InputRef(3));
     joinClauses.add(
-        new RexExpression.FunctionCall(SqlKind.NOT_EQUALS, FieldSpec.DataType.STRING, "NOT_EQUALS", functionOperands));
+        new RexExpression.FunctionCall(SqlKind.NOT_EQUALS, FieldSpec.DataType.STRING, "NOT_EQUALS", functionOperands,
+         false));
     DataSchema resultSchema = new DataSchema(new String[]{"int_col1", "string_col1", "int_co2", "string_col2"},
         new DataSchema.ColumnDataType[]{
             DataSchema.ColumnDataType.INT, DataSchema.ColumnDataType.STRING, DataSchema.ColumnDataType.INT,
@@ -383,7 +384,8 @@ public class HashJoinOperatorTest {
     functionOperands.add(new RexExpression.InputRef(0));
     functionOperands.add(new RexExpression.InputRef(2));
     joinClauses.add(
-        new RexExpression.FunctionCall(SqlKind.NOT_EQUALS, FieldSpec.DataType.STRING, "NOT_EQUALS", functionOperands));
+        new RexExpression.FunctionCall(SqlKind.NOT_EQUALS, FieldSpec.DataType.STRING, "NOT_EQUALS", functionOperands,
+            false));
     DataSchema resultSchema = new DataSchema(new String[]{"int_col1", "string_col1", "int_co2", "string_col2"},
         new DataSchema.ColumnDataType[]{
             DataSchema.ColumnDataType.INT, DataSchema.ColumnDataType.STRING, DataSchema.ColumnDataType.INT,

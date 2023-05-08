@@ -21,6 +21,7 @@ package org.apache.pinot.common.request.context;
 import java.util.Objects;
 import java.util.Set;
 import org.apache.pinot.common.request.Literal;
+import org.apache.pinot.common.utils.DataSchema;
 import org.apache.pinot.spi.data.FieldSpec;
 
 
@@ -37,7 +38,7 @@ public class ExpressionContext {
   }
 
   private final Type _type;
-  private final String _identifier;
+  private final IdentifierContext _identifier;
   private final FunctionContext _function;
   // Only set when the _type is LITERAL
   private final LiteralContext _literal;
@@ -50,15 +51,25 @@ public class ExpressionContext {
     return new ExpressionContext(Type.LITERAL, null, null, new LiteralContext(type, val));
   }
 
+  public static ExpressionContext forLiteralContext(DataSchema.ColumnDataType type, Object val) {
+    return new ExpressionContext(Type.LITERAL, null, null, new LiteralContext(type.toDataType(), val));
+  }
+
+
   public static ExpressionContext forIdentifier(String identifier) {
-    return new ExpressionContext(Type.IDENTIFIER, identifier, null, null);
+    return forIdentifier(identifier, null, -1);
+  }
+
+  public static ExpressionContext forIdentifier(String identifier, DataSchema.ColumnDataType dataType,
+      int identifierIndex) {
+    return new ExpressionContext(Type.IDENTIFIER, new IdentifierContext(identifier, dataType, identifierIndex), null, null);
   }
 
   public static ExpressionContext forFunction(FunctionContext function) {
     return new ExpressionContext(Type.FUNCTION, null, function, null);
   }
 
-  private ExpressionContext(Type type, String identifier, FunctionContext function, LiteralContext literal) {
+  private ExpressionContext(Type type, IdentifierContext identifier, FunctionContext function, LiteralContext literal) {
     _type = type;
     _identifier = identifier;
     _function = function;
@@ -69,13 +80,21 @@ public class ExpressionContext {
     return _type;
   }
 
+  public DataSchema.ColumnDataType getIdentifierDataType() {
+    return _identifier.getDataType();
+  }
+
   // Please check the _type of this context is Literal before calling get, otherwise it may return null.
   public LiteralContext getLiteral(){
     return _literal;
   }
 
   public String getIdentifier() {
-    return _identifier;
+    return _identifier.getName();
+  }
+
+  public int getIdentifierIndex() {
+    return _identifier.getIdentifierIndex();
   }
 
   public FunctionContext getFunction() {
@@ -87,8 +106,9 @@ public class ExpressionContext {
    */
   public void getColumns(Set<String> columns) {
     if (_type == Type.IDENTIFIER) {
-      if (!_identifier.equals("*")) {
-        columns.add(_identifier);
+      String name = _identifier.getName();
+      if (!name.equals("*")) {
+        columns.add(name);
       }
     } else if (_type == Type.FUNCTION) {
       _function.getColumns(columns);
@@ -104,7 +124,9 @@ public class ExpressionContext {
       return false;
     }
     ExpressionContext that = (ExpressionContext) o;
-    return _type == that._type && Objects.equals(_identifier, that._identifier) && Objects.equals(_function, that._function) && Objects.equals(_literal, that._literal);
+    return _type == that._type && Objects.equals(_identifier.getName(),
+        that._identifier.getName()) && Objects.equals(_function,
+        that._function) && Objects.equals(_literal, that._literal);
   }
 
   @Override
@@ -114,7 +136,7 @@ public class ExpressionContext {
       case LITERAL:
         return hash + _literal.hashCode();
       case IDENTIFIER:
-        return hash + _identifier.hashCode();
+        return hash + _identifier.getName().hashCode();
       case FUNCTION:
         return hash + _function.hashCode();
       default:
@@ -128,7 +150,7 @@ public class ExpressionContext {
       case LITERAL:
         return _literal.toString();
       case IDENTIFIER:
-        return _identifier;
+        return _identifier.getName();
       case FUNCTION:
         return _function.toString();
       default:

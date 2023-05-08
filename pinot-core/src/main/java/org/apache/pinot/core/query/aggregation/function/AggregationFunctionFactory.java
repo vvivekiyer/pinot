@@ -173,17 +173,17 @@ public class AggregationFunctionFactory {
       } else {
         switch (AggregationFunctionType.valueOf(upperCaseFunctionName)) {
           case COUNT:
-            return new CountAggregationFunction(firstArgument, queryContext.isNullHandlingEnabled());
+            return new CountAggregationFunction(firstArgument, false);
           case MIN:
-            return new MinAggregationFunction(firstArgument, queryContext.isNullHandlingEnabled());
+            return new MinAggregationFunction(firstArgument, false);
           case MAX:
-            return new MaxAggregationFunction(firstArgument, queryContext.isNullHandlingEnabled());
+            return new MaxAggregationFunction(firstArgument, false);
           case SUM:
-            return new SumAggregationFunction(firstArgument, queryContext.isNullHandlingEnabled());
+            return new SumAggregationFunction(firstArgument, false);
           case SUMPRECISION:
-            return new SumPrecisionAggregationFunction(arguments, queryContext.isNullHandlingEnabled());
+            return new SumPrecisionAggregationFunction(arguments, false);
           case AVG:
-            return new AvgAggregationFunction(firstArgument, queryContext.isNullHandlingEnabled());
+            return new AvgAggregationFunction(firstArgument, false);
           case MODE:
             return new ModeAggregationFunction(arguments);
           case FIRSTWITHTIME:
@@ -297,8 +297,8 @@ public class AggregationFunctionFactory {
           case DISTINCTAVGMV:
             return new DistinctAvgMVAggregationFunction(firstArgument);
           case DISTINCT:
-            return new DistinctAggregationFunction(arguments, queryContext.getOrderByExpressions(),
-                queryContext.getLimit());
+            return new DistinctAggregationFunction(arguments, null,
+                100);
           case STUNION:
             return new StUnionAggregationFunction(firstArgument);
           case HISTOGRAM:
@@ -308,9 +308,9 @@ public class AggregationFunctionFactory {
           case COVARSAMP:
             return new CovarianceAggregationFunction(arguments, true);
           case BOOLAND:
-            return new BooleanAndAggregationFunction(firstArgument, queryContext.isNullHandlingEnabled());
+            return new BooleanAndAggregationFunction(firstArgument, false);
           case BOOLOR:
-            return new BooleanOrAggregationFunction(firstArgument, queryContext.isNullHandlingEnabled());
+            return new BooleanOrAggregationFunction(firstArgument, false);
           case VARPOP:
             return new VarianceAggregationFunction(firstArgument, false, false);
           case VARSAMP:
