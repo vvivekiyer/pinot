@@ -60,9 +60,9 @@ public class ExpressionContext {
     return forIdentifier(identifier, null, -1);
   }
 
-  public static ExpressionContext forIdentifier(String identifier, DataSchema.ColumnDataType dataType,
+  public static ExpressionContext forIdentifier(String name, DataSchema.ColumnDataType dataType,
       int identifierIndex) {
-    return new ExpressionContext(Type.IDENTIFIER, new IdentifierContext(identifier, dataType, identifierIndex), null, null);
+    return new ExpressionContext(Type.IDENTIFIER, new IdentifierContext(name, dataType, identifierIndex), null, null);
   }
 
   public static ExpressionContext forFunction(FunctionContext function) {
@@ -89,7 +89,7 @@ public class ExpressionContext {
     return _literal;
   }
 
-  public String getIdentifier() {
+  public String getIdentifierName() {
     return _identifier.getName();
   }
 

@@ -106,6 +106,18 @@ public interface AggregationFunction<IntermediateResult, FinalResult extends Com
    */
   IntermediateResult merge(IntermediateResult intermediateResult1, IntermediateResult intermediateResult2);
 
+  default void mergeAndUpdateResultHolder(IntermediateResult intermediateResult,
+      AggregationResultHolder aggregationResultHolder) {
+  }
+
+  default void mergeAndUpdateResultHolder(IntermediateResult intermediateResult,
+      GroupByResultHolder groupByResultHolder,
+      int groupKey) {
+  }
+
+
+
+
   /**
    * Returns the {@link ColumnDataType} of the intermediate result.
    * <p>This column data type is used for transferring data in data table.

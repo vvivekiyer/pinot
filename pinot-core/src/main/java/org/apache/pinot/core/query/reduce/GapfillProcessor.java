@@ -35,6 +35,7 @@ import org.apache.pinot.common.utils.DataSchema.ColumnDataType;
 import org.apache.pinot.core.common.BlockValSet;
 import org.apache.pinot.core.data.table.Key;
 import org.apache.pinot.core.query.aggregation.function.AggregationFunction;
+import org.apache.pinot.core.query.aggregation.function.AggFunctionQueryContextContext;
 import org.apache.pinot.core.query.aggregation.function.AggregationFunctionFactory;
 import org.apache.pinot.core.query.aggregation.function.CountAggregationFunction;
 import org.apache.pinot.core.query.aggregation.groupby.GroupByResultHolder;
@@ -85,7 +86,7 @@ public class GapfillProcessor extends BaseGapfillProcessor {
 
     // The first one argument of timeSeries is time column. The left ones are defining entity.
     for (ExpressionContext entityColum : _timeSeries) {
-      int index = indexes.get(entityColum.getIdentifier());
+      int index = indexes.get(entityColum.getIdentifierName());
       _isGroupBySelections[index] = true;
     }
 
@@ -279,8 +280,9 @@ public class GapfillProcessor extends BaseGapfillProcessor {
       ExpressionContext expressionContext = _queryContext.getSelectExpressions().get(i);
       if (expressionContext.getType() == ExpressionContext.Type.FUNCTION) {
         FunctionContext functionContext = expressionContext.getFunction();
+        AggFunctionQueryContextContext aggFuncContext = new AggFunctionQueryContextContext(_queryContext);
         AggregationFunction aggregationFunction =
-            AggregationFunctionFactory.getAggregationFunction(functionContext, _queryContext);
+            AggregationFunctionFactory.getAggregationFunction(functionContext, aggFuncContext);
         GroupByResultHolder groupByResultHolder =
             aggregationFunction.createGroupByResultHolder(groupKeyIndexes.size(), groupKeyIndexes.size());
         if (aggregationFunction instanceof CountAggregationFunction) {

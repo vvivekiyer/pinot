@@ -295,6 +295,22 @@ public class MinAggregationFunction extends BaseSingleInputAggregationFunction<D
   }
 
   @Override
+  public void mergeAndUpdateResultHolder(Double intermediateMinResult,
+      AggregationResultHolder aggregationResultHolder) {
+    double existingVal = aggregationResultHolder.getDoubleResult();
+    double result = merge(existingVal, intermediateMinResult);
+    aggregationResultHolder.setValue(result);
+  }
+
+  @Override
+  public void mergeAndUpdateResultHolder(Double intermediateMinResult,
+      GroupByResultHolder groupByResultHolder, int groupKey) {
+    double existingVal = groupByResultHolder.getDoubleResult(groupKey);
+    double result = merge(existingVal, intermediateMinResult);
+    groupByResultHolder.setValueForKey(groupKey, result);
+  }
+
+  @Override
   public ColumnDataType getIntermediateResultColumnType() {
     return ColumnDataType.DOUBLE;
   }

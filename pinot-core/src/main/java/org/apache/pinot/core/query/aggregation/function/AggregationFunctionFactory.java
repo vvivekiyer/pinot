@@ -23,7 +23,6 @@ import java.util.List;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.pinot.common.request.context.ExpressionContext;
 import org.apache.pinot.common.request.context.FunctionContext;
-import org.apache.pinot.core.query.request.context.QueryContext;
 import org.apache.pinot.segment.spi.AggregationFunctionType;
 import org.apache.pinot.spi.data.FieldSpec;
 import org.apache.pinot.spi.exception.BadQueryRequestException;
@@ -45,7 +44,8 @@ public class AggregationFunctionFactory {
    * <p>TODO: Consider modeling DISTINCT as unique selection instead of aggregation so that early-termination, limit and
    *          offset can be applied easier
    */
-  public static AggregationFunction getAggregationFunction(FunctionContext function, QueryContext queryContext) {
+  public static AggregationFunction getAggregationFunction(FunctionContext function,
+      AggFunctionQueryContextContext aggFunctionQueryContextContext) {
     try {
       String upperCaseFunctionName = StringUtils.remove(function.getFunctionName(), '_').toUpperCase();
       List<ExpressionContext> arguments = function.getArguments();
@@ -173,17 +173,17 @@ public class AggregationFunctionFactory {
       } else {
         switch (AggregationFunctionType.valueOf(upperCaseFunctionName)) {
           case COUNT:
-            return new CountAggregationFunction(firstArgument, false);
+            return new CountAggregationFunction(firstArgument, aggFunctionQueryContextContext.isNullHandlingEnabled());
           case MIN:
-            return new MinAggregationFunction(firstArgument, false);
+            return new MinAggregationFunction(firstArgument, aggFunctionQueryContextContext.isNullHandlingEnabled());
           case MAX:
-            return new MaxAggregationFunction(firstArgument, false);
+            return new MaxAggregationFunction(firstArgument, aggFunctionQueryContextContext.isNullHandlingEnabled());
           case SUM:
-            return new SumAggregationFunction(firstArgument, false);
+            return new SumAggregationFunction(firstArgument, aggFunctionQueryContextContext.isNullHandlingEnabled());
           case SUMPRECISION:
-            return new SumPrecisionAggregationFunction(arguments, false);
+            return new SumPrecisionAggregationFunction(arguments, aggFunctionQueryContextContext.isNullHandlingEnabled());
           case AVG:
-            return new AvgAggregationFunction(firstArgument, false);
+            return new AvgAggregationFunction(firstArgument, aggFunctionQueryContextContext.isNullHandlingEnabled());
           case MODE:
             return new ModeAggregationFunction(arguments);
           case FIRSTWITHTIME:
@@ -297,8 +297,8 @@ public class AggregationFunctionFactory {
           case DISTINCTAVGMV:
             return new DistinctAvgMVAggregationFunction(firstArgument);
           case DISTINCT:
-            return new DistinctAggregationFunction(arguments, null,
-                100);
+            return new DistinctAggregationFunction(arguments, aggFunctionQueryContextContext.getOrderByExpressions(),
+                aggFunctionQueryContextContext.getLimit());
           case STUNION:
             return new StUnionAggregationFunction(firstArgument);
           case HISTOGRAM:
@@ -308,9 +308,9 @@ public class AggregationFunctionFactory {
           case COVARSAMP:
             return new CovarianceAggregationFunction(arguments, true);
           case BOOLAND:
-            return new BooleanAndAggregationFunction(firstArgument, false);
+            return new BooleanAndAggregationFunction(firstArgument, aggFunctionQueryContextContext.isNullHandlingEnabled());
           case BOOLOR:
-            return new BooleanOrAggregationFunction(firstArgument, false);
+            return new BooleanOrAggregationFunction(firstArgument, aggFunctionQueryContextContext.isNullHandlingEnabled());
           case VARPOP:
             return new VarianceAggregationFunction(firstArgument, false, false);
           case VARSAMP:

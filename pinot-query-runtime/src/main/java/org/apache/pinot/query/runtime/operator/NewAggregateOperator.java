@@ -18,19 +18,13 @@
  */
 package org.apache.pinot.query.runtime.operator;
 
-import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
-import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 import org.apache.pinot.common.datablock.DataBlock;
 import org.apache.pinot.common.request.context.ExpressionContext;
@@ -40,16 +34,12 @@ import org.apache.pinot.core.common.BlockValSet;
 import org.apache.pinot.core.common.IntermediateStageBlockValSet;
 import org.apache.pinot.core.data.table.Key;
 import org.apache.pinot.core.query.aggregation.AggregationResultHolder;
+import org.apache.pinot.core.query.aggregation.function.AggFunctionQueryContextContext;
 import org.apache.pinot.core.query.aggregation.function.AggregationFunction;
 import org.apache.pinot.core.query.aggregation.groupby.GroupByResultHolder;
-import org.apache.pinot.query.planner.logical.RexExpression;
 import org.apache.pinot.query.runtime.blocks.TransferableBlock;
 import org.apache.pinot.query.runtime.blocks.TransferableBlockUtils;
-import org.apache.pinot.query.runtime.operator.utils.AggregationUtils;
 import org.apache.pinot.query.runtime.plan.OpChainExecutionContext;
-import org.apache.pinot.segment.local.customobject.PinotFourthMoment;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import static org.apache.pinot.core.query.aggregation.function.AggregationFunctionFactory.getAggregationFunction;
 
@@ -70,54 +60,56 @@ import static org.apache.pinot.core.query.aggregation.function.AggregationFuncti
  */
 public class NewAggregateOperator extends MultiStageOperator {
   private static final String EXPLAIN_NAME = "AGGREGATE_OPERATOR";
-  private static final Logger LOGGER = LoggerFactory.getLogger(NewAggregateOperator.class);
 
   private final MultiStageOperator _inputOperator;
-
-  // TODO: Deal with the case where _aggCalls is empty but we have groupSet setup, which means this is a Distinct call.
-  // TODO(Vivek): RexExpression will be converted to AggregationFunction[]
-
-
   private final DataSchema _resultSchema;
-  private final AggregationUtils.Accumulator[] _accumulators;
+
+  // TODO(Vivek): Deal with the case where _aggCalls is empty but we have groupSet setup, which means this is a
+  //  Distinct call.
+  // TODO(Vivek): RexExpression will be converted to AggregationFunction[]
+  private final List<ExpressionContext> _groupSet;
   private final AggregationFunction[] _aggregationFunctions;
   private final AggregationResultHolder[] _aggregationResultHolders;
   private final GroupByResultHolder[] _groupByResultHolders;
-  private final List<ExpressionContext> _groupSet;
   private final Map<Key, Object[]> _groupByKeyHolder;
-
+  private int _groupId = 0;
+  private Map<Integer, Integer> _groupIdMap;
 
   private TransferableBlock _upstreamErrorBlock;
   private boolean _readyToConstruct;
   private boolean _hasReturnedAggregateBlock;
+  private boolean _isLeafStageAggregation;
 
   // TODO: refactor Pinot Reducer code to support the intermediate stage agg operator.
   // aggCalls has to be a list of FunctionCall and cannot be null
   // groupSet has to be a list of InputRef and cannot be null
   // TODO: Add these two checks when we confirm we can handle error in upstream ctor call.
-  public NewAggregateOperator(OpChainExecutionContext context, MultiStageOperator inputOperator, DataSchema dataSchema,
-      List<FunctionContext> functionContexts, List<ExpressionContext> groupSet, DataSchema inputSchema, Object dummy) {
+
+  // TODO(Vivek): Remove inputSchema and dummy parameters when they are not used.
+  public NewAggregateOperator(OpChainExecutionContext context, MultiStageOperator inputOperator,
+      DataSchema resultSchema, List<FunctionContext> functionContexts, List<ExpressionContext> groupSet,
+      boolean isLeafStageAggregation) {
     super(context);
     _inputOperator = inputOperator;
-    _groupSet = groupSet;
-    _upstreamErrorBlock = null;
+    _resultSchema = resultSchema;
 
+    _groupSet = groupSet;
     _groupByKeyHolder = new HashMap<>();
-    _accumulators = new AggregationUtils.Accumulator[functionContexts.size()];
+    _groupIdMap = new HashMap<>();
     _aggregationFunctions = new AggregationFunction[functionContexts.size()];
     _aggregationResultHolders = new AggregationResultHolder[functionContexts.size()];
     _groupByResultHolders = new GroupByResultHolder[functionContexts.size()];
     for (int i = 0; i < _aggregationFunctions.length; i++) {
-      _aggregationFunctions[i] = getAggregationFunction(functionContexts.get(i), null);
+      _aggregationFunctions[i] = getAggregationFunction(functionContexts.get(i), new AggFunctionQueryContextContext());
       _aggregationResultHolders[i] = _aggregationFunctions[i].createAggregationResultHolder();
       // TODO(Vivek): Change it.
-      _groupByResultHolders[i] = _aggregationFunctions[i].createGroupByResultHolder(10000, 1000);
+      _groupByResultHolders[i] = _aggregationFunctions[i].createGroupByResultHolder(10_000, 100_000);
     }
 
-
-    _resultSchema = dataSchema;
+    _upstreamErrorBlock = null;
     _readyToConstruct = false;
     _hasReturnedAggregateBlock = false;
+    _isLeafStageAggregation = isLeafStageAggregation;
   }
 
   @Override
@@ -179,7 +171,7 @@ public class NewAggregateOperator extends MultiStageOperator {
         System.arraycopy(keyElements, 0, row, 0, keyElements.length);
         for (int i = 0; i < _aggregationFunctions.length; i++) {
           row[i + _groupSet.size()] = _aggregationFunctions[i].extractGroupByResult(_groupByResultHolders[i],
-              e.getKey().hashCode());
+              _groupIdMap.get(e.getKey().hashCode()));
         }
         rows.add(row);
       }
@@ -203,7 +195,9 @@ public class NewAggregateOperator extends MultiStageOperator {
   private TransferableBlock constructEmptyAggResultBlock() {
     Object[] row = new Object[_aggregationFunctions.length];
     for (int i = 0; i < _aggregationFunctions.length; i++) {
-      row[i] = _accumulators[i].getMerger().initialize(null, _accumulators[i].getDataType());
+      // TODO(Vivek): Initialize empty rows with null depending on datatype.
+      // aggregationFunction.extractAggregationResult(aggregationFunction.createAggregationResultHolder())
+      // Check ResultBlockUtils.java
     }
     return new TransferableBlock(Collections.singletonList(row), _resultSchema, DataBlock.Type.ROW);
   }
@@ -225,27 +219,73 @@ public class NewAggregateOperator extends MultiStageOperator {
 
       List<Object[]> container = block.getContainer();
 
-      // TODO(Vivek): Convert row to column representation only for the columns used in the aggregation function.
-      // Convert row to columnar representation
-      Map<Integer, List<Object>> columnValuesMap = new HashMap<>();
-      for (Object[] row : container) {
-        for (int i = 0; i < row.length; i++) {
-          if (!columnValuesMap.containsKey(i)) {
-            columnValuesMap.put(i, new ArrayList<>());
+
+
+
+
+
+      if (!_isLeafStageAggregation) {
+        if (_groupSet.isEmpty()) {
+          // Simple aggregation function.
+          for (int i = 0; i < _aggregationFunctions.length; i++) {
+            // TODO(Vivek): See if count(*) which doesn't have input expressions is handled properly.
+            List<ExpressionContext> expressions = _aggregationFunctions[i].getInputExpressions();
+            Preconditions.checkState(expressions.size() == 1);
+            ExpressionContext expression = expressions.get(0);
+            Preconditions.checkState(expression.getType().equals(ExpressionContext.Type.IDENTIFIER));
+            int idx = expression.getIdentifierIndex();
+
+            for (Object[] row : container) {
+              Object intermediateResultToMerge = row[idx];
+
+              _aggregationFunctions[i].mergeAndUpdateResultHolder(intermediateResultToMerge,
+                  _aggregationResultHolders[i]);
+            }
           }
+        } else {
+          int[] intKeys = GenerateGroupByKeys(container);
 
-          columnValuesMap.get(i).add(row[i]);
+          for (int i = 0; i < _aggregationFunctions.length; i++) {
+            GroupByResultHolder groupByResultHolder = _groupByResultHolders[i];
+            groupByResultHolder.ensureCapacity(_groupIdMap.size());
+            AggregationFunction aggregationFunction = _aggregationFunctions[i];
+
+            List<ExpressionContext> expressions = _aggregationFunctions[i].getInputExpressions();
+            Preconditions.checkState(expressions.size() == 1);
+            ExpressionContext expression = expressions.get(0);
+            Preconditions.checkState(expression.getType().equals(ExpressionContext.Type.IDENTIFIER));
+            int idx = expression.getIdentifierIndex();
+
+            for (int j = 0; j < container.size(); j++) {
+              Object[] row = container.get(j);
+              Object intermediateResultToMerge = row[idx];
+              _aggregationFunctions[i].mergeAndUpdateResultHolder(intermediateResultToMerge, groupByResultHolder,
+                  intKeys[j]);
+
+            }
+          }
         }
-      }
-
-
-      if (_groupSet.isEmpty()) {
-        // Simple aggregation function.
-        PerformSimpleAggregation(container.size(), columnValuesMap);
       } else {
-        // GroupBy with aggregation
-        Key[] keys = GenerateGroupByKeys(container);
-        PerformGroupByAggregation(container.size(), columnValuesMap, keys);
+        // Convert row to columnar representation
+        Map<Integer, List<Object>> columnValuesMap = new HashMap<>();
+        for (Object[] row : container) {
+          for (int i = 0; i < row.length; i++) {
+            if (!columnValuesMap.containsKey(i)) {
+              columnValuesMap.put(i, new ArrayList<>());
+            }
+
+            columnValuesMap.get(i).add(row[i]);
+          }
+        }
+
+        if (_groupSet.isEmpty()) {
+          // Simple aggregation function.
+          PerformSimpleAggregation(container.size(), columnValuesMap);
+        } else {
+          // GroupBy with aggregation
+          int[] intKeys = GenerateGroupByKeys(container);
+          PerformGroupByAggregation(container.size(), columnValuesMap, intKeys);
+        }
       }
 
       block = _inputOperator.nextBlock();
@@ -253,8 +293,8 @@ public class NewAggregateOperator extends MultiStageOperator {
     return false;
   }
 
-  private Key[] GenerateGroupByKeys(List<Object[]> rows) {
-    Key[] rowKeys = new Key[rows.size()];
+  private int[] GenerateGroupByKeys(List<Object[]> rows) {
+    int[] rowKeys = new int[rows.size()];
 
     for (int i = 0; i < rows.size(); i++) {
       Object[] row = rows.get(i);
@@ -266,7 +306,11 @@ public class NewAggregateOperator extends MultiStageOperator {
 
       Key rowKey = new Key(keyElements);
       _groupByKeyHolder.put(rowKey, rowKey.getValues());
-      rowKeys[i] = rowKey;
+      if (!_groupIdMap.containsKey(rowKey.hashCode())) {
+        _groupIdMap.put(rowKey.hashCode(), _groupId);
+        ++_groupId;
+      }
+      rowKeys[i] = _groupIdMap.get(rowKey.hashCode());
     }
 
     return rowKeys;
@@ -275,21 +319,22 @@ public class NewAggregateOperator extends MultiStageOperator {
   private void PerformSimpleAggregation(int length, Map<Integer, List<Object>> columnValuesMap) {
     for (int i = 0; i < _aggregationFunctions.length; i++) {
       AggregationFunction aggregationFunction = _aggregationFunctions[i];
+
+
+
       aggregationFunction.aggregate(length, _aggregationResultHolders[i],
           getBlockValSetMap(aggregationFunction, columnValuesMap));
     }
   }
 
-  private void PerformGroupByAggregation(int length, Map<Integer, List<Object>> columnValuesMap, Key[] keys) {
+  private void PerformGroupByAggregation(int length, Map<Integer, List<Object>> columnValuesMap, int[] intKeys) {
 
     for (int i = 0; i < _aggregationFunctions.length; i++) {
       AggregationFunction aggregationFunction = _aggregationFunctions[i];
       Map<ExpressionContext, BlockValSet> blockValSetMap = getBlockValSetMap(aggregationFunction, columnValuesMap);
       GroupByResultHolder groupByResultHolder = _groupByResultHolders[i];
-      int[] intKeys = new int[length];
-      for (int j = 0; j < length; j++) {
-        intKeys[j] = keys[j].hashCode();
-      }
+      groupByResultHolder.ensureCapacity(_groupIdMap.size());
+      Preconditions.checkState(intKeys.length == length, "Length don't match.");
 
       aggregationFunction.aggregateGroupBySV(length, intKeys, groupByResultHolder, blockValSetMap);
     }

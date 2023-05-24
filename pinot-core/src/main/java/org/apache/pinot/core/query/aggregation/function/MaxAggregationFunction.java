@@ -296,6 +296,24 @@ public class MaxAggregationFunction extends BaseSingleInputAggregationFunction<D
   }
 
   @Override
+  public void mergeAndUpdateResultHolder(Double intermediateMinResult,
+      AggregationResultHolder aggregationResultHolder) {
+    double existingVal = aggregationResultHolder.getDoubleResult();
+    double intermediateResult = ((Number) intermediateMinResult).doubleValue();
+    double result = merge(existingVal, intermediateResult);
+    aggregationResultHolder.setValue(result);
+  }
+
+  @Override
+  public void mergeAndUpdateResultHolder(Double intermediateMinResult,
+      GroupByResultHolder groupByResultHolder, int groupKey) {
+    double existingVal = groupByResultHolder.getDoubleResult(groupKey);
+    double intermediateResult =  ((Number) intermediateMinResult).doubleValue();
+    double result = merge(existingVal, intermediateResult);
+    groupByResultHolder.setValueForKey(groupKey, result);
+  }
+
+  @Override
   public ColumnDataType getIntermediateResultColumnType() {
     return ColumnDataType.DOUBLE;
   }

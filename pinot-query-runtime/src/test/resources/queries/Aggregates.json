@@ -23,7 +23,7 @@
       {
         "psql": "9.21.0",
         "description": "aggregate boolean column no group by",
-        "sql": "SELECT bool_and(bool_col), bool_or(bool_col) FROM {tbl}"
+        "sql": "SELECT string_col, bool_col, min(double_col), max(double_col) FROM {tbl} group by string_col, bool_col"
       }
     ]
   },

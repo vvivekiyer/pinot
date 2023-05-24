@@ -52,7 +52,7 @@ public class CountAggregationFunction extends BaseSingleInputAggregationFunction
     // Note COUNT on any literal gives same result as COUNT(*)
     // So allow for identifiers that are not * and functions, disable for literals and *
     _nullHandlingEnabled = nullHandlingEnabled
-            && ((expression.getType() == ExpressionContext.Type.IDENTIFIER && !expression.getIdentifier().equals("*"))
+            && ((expression.getType() == ExpressionContext.Type.IDENTIFIER && !expression.getIdentifierName().equals("*"))
             || (expression.getType() == ExpressionContext.Type.FUNCTION));
   }
 

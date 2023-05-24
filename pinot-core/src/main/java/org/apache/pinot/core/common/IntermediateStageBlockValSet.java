@@ -10,7 +10,7 @@ import org.apache.pinot.segment.spi.index.reader.Dictionary;
 import org.apache.pinot.spi.data.FieldSpec;
 import org.roaringbitmap.RoaringBitmap;
 
-
+// TODO(Vivek): Add comments
 public class IntermediateStageBlockValSet implements BlockValSet {
   private final FieldSpec.DataType _dataType;
   private final PinotDataType _pinotDataType;
@@ -143,7 +143,13 @@ public class IntermediateStageBlockValSet implements BlockValSet {
 
   @Override
   public BigDecimal[] getBigDecimalValuesSV() {
-    throw new UnsupportedOperationException();
+    int length = _values.size();
+    BigDecimal[] values = new BigDecimal[length];
+    for (int i = 0; i < length; i++) {
+      values[i] = _pinotDataType.toBigDecimal(_values.get(i));
+    }
+    return values;
+
   }
 
   @Override
@@ -158,6 +164,7 @@ public class IntermediateStageBlockValSet implements BlockValSet {
 
   @Override
   public byte[][] getBytesValuesSV() {
+    // TODO(Vivek): Handle this.
     throw new UnsupportedOperationException();
   }
 

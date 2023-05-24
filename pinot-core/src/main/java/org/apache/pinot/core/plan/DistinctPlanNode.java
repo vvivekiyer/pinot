@@ -60,7 +60,7 @@ public class DistinctPlanNode implements PlanNode {
     if (_queryContext.getFilter() == null && !_queryContext.isNullHandlingEnabled() && expressions.size() == 1) {
       ExpressionContext expression = expressions.get(0);
       if (expression.getType() == ExpressionContext.Type.IDENTIFIER) {
-        DataSource dataSource = _indexSegment.getDataSource(expression.getIdentifier());
+        DataSource dataSource = _indexSegment.getDataSource(expression.getIdentifierName());
         Dictionary dictionary = dataSource.getDictionary();
         if (dictionary != null) {
           DataSourceMetadata dataSourceMetadata = dataSource.getDataSourceMetadata();

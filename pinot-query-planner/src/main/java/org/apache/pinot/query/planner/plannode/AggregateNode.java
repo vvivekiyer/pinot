@@ -21,7 +21,6 @@ package org.apache.pinot.query.planner.plannode;
 import com.google.common.base.Preconditions;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 import org.apache.calcite.rel.core.AggregateCall;
 import org.apache.calcite.rel.hint.PinotHintStrategyTable;
 import org.apache.calcite.rel.hint.RelHint;
@@ -51,12 +50,13 @@ public class AggregateNode extends AbstractPlanNode {
       List<RelHint> relHints) {
     super(planFragmentId, dataSchema);
 
-    _aggCalls = new ArrayList<>(aggCalls.size());
-    for (int i = 0; i < aggCalls.size(); i++) {
-      _aggCalls.add(i, RexExpression.toRexExpression(aggCalls.get(i), _relHints.contains(FINAL_STAGE_HINT)));
-    }
+
     _groupSet = groupSet;
     _relHints = relHints;
+    _aggCalls = new ArrayList<>(aggCalls.size());
+    for (int i = 0; i < aggCalls.size(); i++) {
+      _aggCalls.add(i, RexExpression.toRexExpression(aggCalls.get(i)));
+    }
     Preconditions.checkState(!(isFinalStage(this) && isIntermediateStage(this)),
         "Unable to compile aggregation with both hints for final and intermediate agg type.");
   }
@@ -68,7 +68,7 @@ public class AggregateNode extends AbstractPlanNode {
   public static boolean isIntermediateStage(AggregateNode aggNode) {
     return aggNode.getRelHints().contains(INTERMEDIATE_STAGE_HINT);
   }
-git stat
+
   public List<RexExpression> getAggCalls() {
     return _aggCalls;
   }

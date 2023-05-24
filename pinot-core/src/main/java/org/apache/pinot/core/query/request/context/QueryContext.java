@@ -38,6 +38,7 @@ import org.apache.pinot.common.request.context.RequestContextUtils;
 import org.apache.pinot.common.utils.config.QueryOptionsUtils;
 import org.apache.pinot.core.plan.maker.InstancePlanMakerImplV2;
 import org.apache.pinot.core.query.aggregation.function.AggregationFunction;
+import org.apache.pinot.core.query.aggregation.function.AggFunctionQueryContextContext;
 import org.apache.pinot.core.query.aggregation.function.AggregationFunctionFactory;
 import org.apache.pinot.core.util.MemoizedClassAssociation;
 
@@ -539,8 +540,9 @@ public class QueryContext {
           queryContext._hasFilteredAggregations = true;
         }
         int functionIndex = filteredAggregationFunctions.size();
+        AggFunctionQueryContextContext aggFuncContext = new AggFunctionQueryContextContext(queryContext);
         AggregationFunction aggregationFunction =
-            AggregationFunctionFactory.getAggregationFunction(aggregation, queryContext);
+            AggregationFunctionFactory.getAggregationFunction(aggregation, aggFuncContext);
         filteredAggregationFunctions.add(Pair.of(aggregationFunction, filter));
         filteredAggregationsIndexMap.put(Pair.of(aggregation, filter), functionIndex);
       }
@@ -560,8 +562,9 @@ public class QueryContext {
           FunctionContext aggregation = pair.getLeft();
           FilterContext filter = pair.getRight();
           int functionIndex = filteredAggregationFunctions.size();
+          AggFunctionQueryContextContext aggFuncContext = new AggFunctionQueryContextContext(queryContext);
           AggregationFunction aggregationFunction =
-              AggregationFunctionFactory.getAggregationFunction(aggregation, queryContext);
+              AggregationFunctionFactory.getAggregationFunction(aggregation, aggFuncContext);
           filteredAggregationFunctions.add(Pair.of(aggregationFunction, filter));
           filteredAggregationsIndexMap.put(Pair.of(aggregation, filter), functionIndex);
         }

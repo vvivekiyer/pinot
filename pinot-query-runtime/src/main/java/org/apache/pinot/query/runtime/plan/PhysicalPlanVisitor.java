@@ -18,15 +18,12 @@
  */
 package org.apache.pinot.query.runtime.plan;
 
-import com.google.common.base.Preconditions;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
-import org.apache.pinot.common.request.Expression;
 import org.apache.pinot.common.request.context.ExpressionContext;
 import org.apache.pinot.common.request.context.FunctionContext;
 import org.apache.pinot.common.utils.DataSchema;
-import org.apache.pinot.common.utils.request.RequestUtils;
 import org.apache.pinot.query.planner.logical.RexExpression;
 import org.apache.pinot.query.planner.plannode.AggregateNode;
 import org.apache.pinot.query.planner.plannode.ExchangeNode;
@@ -42,7 +39,6 @@ import org.apache.pinot.query.planner.plannode.SortNode;
 import org.apache.pinot.query.planner.plannode.TableScanNode;
 import org.apache.pinot.query.planner.plannode.ValueNode;
 import org.apache.pinot.query.planner.plannode.WindowNode;
-import org.apache.pinot.query.runtime.operator.AggregateOperator;
 import org.apache.pinot.query.runtime.operator.FilterOperator;
 import org.apache.pinot.query.runtime.operator.HashJoinOperator;
 import org.apache.pinot.query.runtime.operator.IntersectOperator;
@@ -58,8 +54,6 @@ import org.apache.pinot.query.runtime.operator.SortedMailboxReceiveOperator;
 import org.apache.pinot.query.runtime.operator.TransformOperator;
 import org.apache.pinot.query.runtime.operator.UnionOperator;
 import org.apache.pinot.query.runtime.operator.WindowAggregateOperator;
-import org.apache.pinot.segment.spi.V1Constants;
-import org.apache.pinot.spi.data.FieldSpec;
 
 
 /**
@@ -111,7 +105,7 @@ public class PhysicalPlanVisitor implements PlanNodeVisitor<MultiStageOperator, 
     DataSchema resultSchema = node.getDataSchema();
     DataSchema inputSchema = node.getInputs().get(0).getDataSchema();
 
-    // Convert aggCalls.
+    // Convert aggCalls to FunctionContext and ExpressionContext that our aggregation functions understand.
     List<RexExpression.FunctionCall> aggFunctionCalls =
         node.getAggCalls().stream().map(RexExpression.FunctionCall.class::cast).collect(Collectors.toList());
     List<FunctionContext> functionContexts = new ArrayList<>();
@@ -120,17 +114,17 @@ public class PhysicalPlanVisitor implements PlanNodeVisitor<MultiStageOperator, 
       functionContexts.add(funcContext);
     }
 
-    // Convert groupSet
+    // Convert groupSet to ExpressionContext that our aggregation functions understand.
     List<RexExpression> groupBySetRexExpr = node.getGroupSet();
     List<ExpressionContext> groupByExprContext = new ArrayList<>();
-    for (int i = 0; i < groupBySetRexExpr.size(); i++) {
-      ExpressionContext exprContext = convertRexExpressionToExpressionContext(groupBySetRexExpr.get(i), inputSchema);
+    for (RexExpression groupByRexExpr : groupBySetRexExpr) {
+      ExpressionContext exprContext = convertRexExpressionToExpressionContext(groupByRexExpr, inputSchema);
       groupByExprContext.add(exprContext);
     }
 
 
-    return new NewAggregateOperator(context.getOpChainExecutionContext(), nextOperator, node.getDataSchema(),
-        functionContexts, groupByExprContext, node.getInputs().get(0).getDataSchema(), null);
+    return new NewAggregateOperator(context.getOpChainExecutionContext(), nextOperator, resultSchema,
+        functionContexts, groupByExprContext, AggregateNode.isIntermediateStage(node));
 //    return new AggregateOperator(context.getOpChainExecutionContext(), nextOperator, node.getDataSchema(),
 //        node.getAggCalls(), node.getGroupSet(), node.getInputs().get(0).getDataSchema());
   }
@@ -138,17 +132,17 @@ public class PhysicalPlanVisitor implements PlanNodeVisitor<MultiStageOperator, 
 
   private FunctionContext convertRexExpressionsToFunctionContext(RexExpression.FunctionCall agg,
       DataSchema inputSchema) {
-    FunctionContext.Type functionType = FunctionContext.Type.AGGREGATION;
+    // Extract details from RexExpression agg.
     String functionName = agg.getFunctionName();
     List<RexExpression> functionOperands = agg.getFunctionOperands();
-    List<ExpressionContext> aggArguments = new ArrayList<>();
 
+    List<ExpressionContext> aggArguments = new ArrayList<>();
     for (RexExpression operand : functionOperands) {
       ExpressionContext exprContext = convertRexExpressionToExpressionContext(operand, inputSchema);
       aggArguments.add(exprContext);
     }
 
-    FunctionContext functionContext = new FunctionContext(functionType, functionName,
+    FunctionContext functionContext = new FunctionContext(FunctionContext.Type.AGGREGATION, functionName,
         aggArguments);
     return functionContext;
   }
@@ -163,10 +157,13 @@ public class PhysicalPlanVisitor implements PlanNodeVisitor<MultiStageOperator, 
         // TODO(Vivek): Differenciate between SV and MV when MV support is added.
 
         // TODO(Vivek): Check if we should instead fetch datatype from inputSchema.getColumnDataType(_inputRef) like
-        //  Accumulator()
+        //  Accumulator(). Already use this.
+        // TODO(Vivek): We can use inputSchema.getColumnNames to fetch the column names. Please check. -> This only
+        //  returns EXPR$1. So cannot be used.
         int identifierIndex = inputRef.getIndex();
         DataSchema.ColumnDataType identifierDataType = inputSchema.getColumnDataType(identifierIndex);
-        exprContext = ExpressionContext.forIdentifier(null, identifierDataType, identifierIndex);
+        String columnName = inputSchema.getColumnName(identifierIndex);
+        exprContext = ExpressionContext.forIdentifier(columnName, identifierDataType, identifierIndex);
         break;
       }
       case LITERAL: {
@@ -177,8 +174,8 @@ public class PhysicalPlanVisitor implements PlanNodeVisitor<MultiStageOperator, 
         break;
       }
       default:
+        // TODO(Vivek): Check if operands of an aggregation function can only be INPUT_REF or LITERAL.
         throw new IllegalStateException();
-        // TODO(Vivek): Not possible.
     }
 
     return exprContext;

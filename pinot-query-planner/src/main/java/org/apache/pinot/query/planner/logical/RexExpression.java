@@ -23,7 +23,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.apache.calcite.rel.core.AggregateCall;
-import org.apache.calcite.rel.hint.RelHint;
 import org.apache.calcite.rex.RexCall;
 import org.apache.calcite.rex.RexInputRef;
 import org.apache.calcite.rex.RexLiteral;
@@ -74,16 +73,16 @@ public interface RexExpression {
         // RexExpression functions called from here cannot be aggregation functions.
         return new RexExpression.FunctionCall(rexCall.getKind(),
             RelToStageConverter.convertToFieldSpecDataType(rexCall.getType()),
-            rexCall.getOperator().getName(), operands, false);
+            rexCall.getOperator().getName(), operands);
     }
   }
 
-  static RexExpression toRexExpression(AggregateCall aggCall, boolean isLeafStageAggregation) {
+  static RexExpression toRexExpression(AggregateCall aggCall) {
     List<RexExpression> operands = aggCall.getArgList().stream().map(InputRef::new).collect(Collectors.toList());
 
     return new RexExpression.FunctionCall(aggCall.getAggregation().getKind(),
         RelToStageConverter.convertToFieldSpecDataType(aggCall.getType()), aggCall.getAggregation().getName(),
-        operands, isLeafStageAggregation);
+        operands);
   }
 
   static Object toRexValue(FieldSpec.DataType dataType, Comparable value) {
@@ -186,20 +185,17 @@ public interface RexExpression {
     // the list of RexExpressions that represents the operands to the function.
     @ProtoProperties
     private List<RexExpression> _functionOperands;
-    // The stage of aggregation.
-    @ProtoProperties
-    private boolean _isLeafStageAggregation;
+
 
     public FunctionCall() {
     }
 
     public FunctionCall(SqlKind sqlKind, FieldSpec.DataType type, String functionName,
-        List<RexExpression> functionOperands, boolean isLeafStageAggregation) {
+        List<RexExpression> functionOperands) {
       _sqlKind = sqlKind;
       _dataType = type;
       _functionName = functionName;
       _functionOperands = functionOperands;
-      _isLeafStageAggregation = isLeafStageAggregation;
     }
 
     public String getFunctionName() {
@@ -212,10 +208,6 @@ public interface RexExpression {
 
     public SqlKind getKind() {
       return _sqlKind;
-    }
-
-    public boolean isLeafStageAggregation() {
-      return _isLeafStageAggregation;
     }
 
     public FieldSpec.DataType getDataType() {

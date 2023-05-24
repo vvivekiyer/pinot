@@ -45,7 +45,7 @@ public class RexExpressionUtils {
         rexCall.getOperands().stream().map(RexExpression::toRexExpression).collect(Collectors.toList());
     return new RexExpression.FunctionCall(rexCall.getKind(),
         RelToStageConverter.convertToFieldSpecDataType(rexCall.getType()),
-        "caseWhen", operands, false);
+        "caseWhen", operands);
   }
 
   static RexExpression handleCast(RexCall rexCall) {
@@ -58,7 +58,7 @@ public class RexExpressionUtils {
     operands.add(new RexExpression.Literal(FieldSpec.DataType.STRING,
         RelToStageConverter.convertToFieldSpecDataType(castType).name()));
     return new RexExpression.FunctionCall(rexCall.getKind(), RelToStageConverter.convertToFieldSpecDataType(castType),
-        "CAST", operands, false);
+        "CAST", operands);
   }
 
   // TODO: Add support for range filter expressions (e.g. a > 0 and a < 30)
@@ -70,10 +70,10 @@ public class RexExpressionUtils {
     Sarg sarg = rexLiteral.getValueAs(Sarg.class);
     if (sarg.isPoints()) {
       return new RexExpression.FunctionCall(SqlKind.IN, dataType, SqlKind.IN.name(), toFunctionOperands(rexInputRef,
-          sarg.rangeSet.asRanges(), dataType), false);
+          sarg.rangeSet.asRanges(), dataType));
     } else if (sarg.isComplementedPoints()) {
       return new RexExpression.FunctionCall(SqlKind.NOT_IN, dataType, SqlKind.NOT_IN.name(),
-          toFunctionOperands(rexInputRef, sarg.rangeSet.complement().asRanges(), dataType), false);
+          toFunctionOperands(rexInputRef, sarg.rangeSet.complement().asRanges(), dataType));
     } else {
       throw new NotImplementedException("Range is not implemented yet");
     }
@@ -98,8 +98,4 @@ public class RexExpressionUtils {
     RexLiteral literal = (RexLiteral) in;
     return literal.getValueAs(Integer.class);
   }
-
-
-
-
 }

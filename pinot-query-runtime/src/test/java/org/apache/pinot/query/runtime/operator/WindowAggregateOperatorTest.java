@@ -376,7 +376,7 @@ public class WindowAggregateOperatorTest {
   public void testShouldThrowOnUnknownAggFunction() {
     // Given:
     List<RexExpression> calls = ImmutableList.of(
-        new RexExpression.FunctionCall(SqlKind.AVG, FieldSpec.DataType.INT, "AVERAGE", ImmutableList.of(), false));
+        new RexExpression.FunctionCall(SqlKind.AVG, FieldSpec.DataType.INT, "AVERAGE", ImmutableList.of()));
     List<RexExpression> group = ImmutableList.of(new RexExpression.InputRef(0));
     DataSchema outSchema = new DataSchema(new String[]{"unknown"}, new DataSchema.ColumnDataType[]{DOUBLE});
     DataSchema inSchema = new DataSchema(new String[]{"unknown"}, new DataSchema.ColumnDataType[]{DOUBLE});
@@ -394,7 +394,7 @@ public class WindowAggregateOperatorTest {
     // TODO: Remove this test when support is added for RANK functions
     // Given:
     List<RexExpression> calls = ImmutableList.of(
-        new RexExpression.FunctionCall(SqlKind.RANK, FieldSpec.DataType.INT, "RANK", ImmutableList.of(), false));
+        new RexExpression.FunctionCall(SqlKind.RANK, FieldSpec.DataType.INT, "RANK", ImmutableList.of()));
     List<RexExpression> group = ImmutableList.of(new RexExpression.InputRef(0));
     DataSchema outSchema = new DataSchema(new String[]{"unknown"}, new DataSchema.ColumnDataType[]{DOUBLE});
     DataSchema inSchema = new DataSchema(new String[]{"unknown"}, new DataSchema.ColumnDataType[]{DOUBLE});
@@ -410,8 +410,7 @@ public class WindowAggregateOperatorTest {
   public void testRowNumberRankingFunction() {
     // Given:
     List<RexExpression> calls = ImmutableList.of(
-        new RexExpression.FunctionCall(SqlKind.ROW_NUMBER, FieldSpec.DataType.INT, "ROW_NUMBER", ImmutableList.of(),
-            false));
+        new RexExpression.FunctionCall(SqlKind.ROW_NUMBER, FieldSpec.DataType.INT, "ROW_NUMBER", ImmutableList.of()));
     List<RexExpression> group = ImmutableList.of(new RexExpression.InputRef(0));
     List<RexExpression> order = ImmutableList.of(new RexExpression.InputRef(1));
 
@@ -666,6 +665,6 @@ public class WindowAggregateOperatorTest {
   }
 
   private static RexExpression.FunctionCall getSum(RexExpression arg) {
-    return new RexExpression.FunctionCall(SqlKind.SUM, FieldSpec.DataType.INT, "SUM", ImmutableList.of(arg), false);
+    return new RexExpression.FunctionCall(SqlKind.SUM, FieldSpec.DataType.INT, "SUM", ImmutableList.of(arg));
   }
 }
