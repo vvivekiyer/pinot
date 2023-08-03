@@ -1,0 +1,86 @@
+package org.apache.pinot.core.query.scheduler.resources;
+
+import com.google.common.base.Preconditions;
+import java.util.Map;
+import org.apache.pinot.core.query.request.ServerQueryRequest;
+import org.apache.pinot.core.query.scheduler.SchedulerGroupAccountant;
+import org.apache.pinot.spi.env.PinotConfiguration;
+import org.apache.pinot.spi.utils.CommonConstants;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+
+public class WorkloadAwareResourceManager extends ResourceManager {
+  private static final Logger LOGGER = LoggerFactory.getLogger(WorkloadAwareResourceManager.class);
+  private final ResourceLimitPolicy _nonProdWorkloadPolicy;
+
+  public WorkloadAwareResourceManager(PinotConfiguration config) {
+    super(config);
+    _nonProdWorkloadPolicy = new ResourceLimitPolicy(config, _numQueryWorkerThreads);
+  }
+
+
+
+  /**
+   * Returns an executor service that query executor can use like a dedicated
+   * service for submitting jobs for parallel execution.
+   * @param query
+   * @param accountant Accountant for a scheduler group
+   * @return BoundedAccountingExecutor service that limits the number of threads available
+   * for query execution. Query execution can submit tasks for parallel execution without need
+   * for limiting their parallelism.
+   */
+  @Override
+  public QueryExecutorService getExecutorService(ServerQueryRequest query, SchedulerGroupAccountant accountant) {
+    if (!isNonProdQuery(query)) {
+      // Prod query. Use the Unbounded resource Manager.
+      return new QueryExecutorService() {
+        @Override
+        public void execute(Runnable command) {
+          _queryWorkers.submit(command);
+        }
+      };
+    }
+
+    // Non Prod Workloads.
+    int numSegments = query.getSegmentsToQuery().size();
+    int queryThreadLimit = Math.max(1, Math.min(_nonProdWorkloadPolicy.getMaxThreadsPerQuery(), numSegments));
+    int spareThreads = _nonProdWorkloadPolicy.getTableThreadsHardLimit() - accountant.totalReservedThreads();
+    if (spareThreads <= 0) {
+      LOGGER.warn("UNEXPECTED: Attempt to schedule query uses more than the configured hard limit on threads");
+      spareThreads = 1;
+    } else {
+      spareThreads = Math.min(spareThreads, queryThreadLimit);
+    }
+    Preconditions.checkState(spareThreads >= 1);
+    // We do not bound number of threads here by total available threads. We can potentially
+    // over-provision number of threads here. That is intentional and (potentially) good solution.
+    // Queries don't use their workers all the time. So, reserving workers leads to suboptimal resource
+    // utilization. We want to keep the pipe as full as possible for query workers. Overprovisioning is one
+    // way to achieve that (in fact, only way for us).  There is a couter-argument to be made that overprovisioning
+    // can impact cache-lines and memory in general.
+    // We use this thread reservation only to determine priority based on resource utilization and not as a way to
+    // improve system performance (because we don't have good insight on that yet)
+    accountant.addReservedThreads(spareThreads);
+    // TODO: For 1 thread we should have the query run in the same queryRunner thread
+    // by supplying an executor service that similar to Guava' directExecutor()
+    return new BoundedAccountingExecutor(_queryWorkers, spareThreads, accountant);
+  }
+
+  private boolean isNonProdQuery(ServerQueryRequest query) {
+    Map<String, String> queryOptions = query.getQueryContext().getQueryOptions();
+    return Boolean.parseBoolean(queryOptions.get(CommonConstants.Broker.Request.QueryOptionKey.IS_NON_PROD_QUERY));
+  }
+
+
+  @Override
+  public int getTableThreadsHardLimit() {
+    return _nonProdWorkloadPolicy.getTableThreadsHardLimit();
+  }
+
+  @Override
+  public int getTableThreadsSoftLimit() {
+    return _nonProdWorkloadPolicy.getTableThreadsSoftLimit();
+  }
+
+}

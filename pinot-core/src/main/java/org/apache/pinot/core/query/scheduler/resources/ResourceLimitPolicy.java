@@ -32,11 +32,11 @@ public class ResourceLimitPolicy {
   static final int MAX_THREAD_LIMIT = Math.max(1, Runtime.getRuntime().availableProcessors());
   // The values for max threads count and pct below are educated guesses
   public static final String THREADS_PER_QUERY_PCT = "threads_per_query_pct";
-  public static final int DEFAULT_THREADS_PER_QUERY_PCT = 20;
+  public static final int DEFAULT_THREADS_PER_QUERY_PCT = 10;
   public static final String TABLE_THREADS_SOFT_LIMIT = "table_threads_soft_limit_pct";
   public static final String TABLE_THREADS_HARD_LIMIT = "table_threads_hard_limit_pct";
-  public static final int DEFAULT_TABLE_THREADS_SOFT_LIMIT = 30;
-  public static final int DEFAULT_TABLE_THREADS_HARD_LIMIT = 45;
+  public static final int DEFAULT_TABLE_THREADS_SOFT_LIMIT = 4;
+  public static final int DEFAULT_TABLE_THREADS_HARD_LIMIT = 8;
 
   private final int _maxThreadsPerQuery;
   private final int _tableThreadsSoftLimit;

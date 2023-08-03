@@ -45,6 +45,7 @@ public class QuerySchedulerFactory {
   public static final String FCFS_ALGORITHM = "fcfs";
   public static final String TOKEN_BUCKET_ALGORITHM = "tokenbucket";
   public static final String BOUNDED_FCFS_ALGORITHM = "bounded_fcfs";
+  public static final String WORKLOAD_AWARE_SCHEDULER = "workload_aware";
   public static final String ALGORITHM_NAME_CONFIG_KEY = "name";
   public static final String DEFAULT_QUERY_SCHEDULER_ALGORITHM = FCFS_ALGORITHM;
 
@@ -61,7 +62,7 @@ public class QuerySchedulerFactory {
     Preconditions.checkNotNull(schedulerConfig);
     Preconditions.checkNotNull(queryExecutor);
 
-    String schedulerName = schedulerConfig.getProperty(ALGORITHM_NAME_CONFIG_KEY, DEFAULT_QUERY_SCHEDULER_ALGORITHM);
+    String schedulerName = "workload_aware";
     QueryScheduler scheduler;
     switch (schedulerName.toLowerCase()) {
       case FCFS_ALGORITHM:
@@ -72,6 +73,9 @@ public class QuerySchedulerFactory {
         break;
       case BOUNDED_FCFS_ALGORITHM:
         scheduler = BoundedFCFSScheduler.create(schedulerConfig, queryExecutor, serverMetrics, latestQueryTime);
+        break;
+      case WORKLOAD_AWARE_SCHEDULER:
+        scheduler = WorkloadAwareScheduler.create(schedulerConfig, queryExecutor, serverMetrics, latestQueryTime);
         break;
       default:
         scheduler =

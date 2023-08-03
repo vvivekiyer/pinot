@@ -349,6 +349,8 @@ public class CommonConstants {
 
         public static final String DROP_RESULTS = "dropResults";
 
+        public static final String IS_NON_PROD_QUERY = "isNonProdQuery";
+
         // TODO: Remove these keys (only apply to PQL) after releasing 0.11.0
         @Deprecated
         public static final String PRESERVE_TYPE = "preserveType";
@@ -989,5 +991,16 @@ public class CommonConstants {
     public static final String CHILD_AGGREGATION_NAME_PREFIX = "child";
     public static final String CHILD_AGGREGATION_SEPERATOR = "@";
     public static final String CHILD_KEY_SEPERATOR = "_";
+  }
+
+  public static class NonProdWorkloadPolicy {
+    // TODO(Vivek): Figure out how to define multiple policies and have configs for each policy
+    private static final String CONFIG_PREFIX = "pinot.nonprod.workload.policy";
+
+    public static final String NAME = CONFIG_PREFIX + ".name";
+
+    public static String MAX_THREADS_PER_QUERY = CONFIG_PREFIX + "max_threads_per_query";
+    public static String WORKLOAD_THREADS_HARD_LIMIT = CONFIG_PREFIX + "workload_threads_hardlimit";
+    public static String WORKLOAD_THREADS_SOFT_LIMIT = CONFIG_PREFIX + "workload_threads_softlimit";
   }
 }
