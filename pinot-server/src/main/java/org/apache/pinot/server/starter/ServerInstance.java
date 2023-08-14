@@ -82,10 +82,10 @@ public class ServerInstance {
 
   public ServerInstance(ServerConf serverConf, HelixManager helixManager, AccessControlFactory accessControlFactory)
       throws Exception {
-    LOGGER.info("Initializing server instance");
+    LOGGER.info("Initializing server instance - new OSS code");
     _helixManager = helixManager;
 
-    LOGGER.info("Initializing server metrics");
+    LOGGER.info("Initializing server metrics - new OSS code");
     PinotMetricsRegistry metricsRegistry = PinotMetricUtils.getPinotMetricsRegistry(serverConf.getMetricsConfig());
     _serverMetrics =
         new ServerMetrics(serverConf.getMetricsPrefix(), metricsRegistry, serverConf.emitTableLevelMetrics(),

@@ -18,9 +18,10 @@
  */
 package org.apache.pinot.core.query.scheduler.resources;
 
+import com.google.common.util.concurrent.ListeningExecutorService;
+import com.google.common.util.concurrent.MoreExecutors;
 import java.util.concurrent.BrokenBarrierException;
 import java.util.concurrent.CyclicBarrier;
-import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.pinot.core.query.scheduler.SchedulerGroupAccountant;
@@ -51,7 +52,7 @@ public class BoundedAccountingExecutorTest {
     final int limit = 3;
     final int jobs = 5;
     // we want total threads > limit
-    Executor es = Executors.newFixedThreadPool(2 * limit);
+    ListeningExecutorService es = MoreExecutors.listeningDecorator(Executors.newFixedThreadPool(2 * limit));
     final BoundedAccountingExecutor bes = new BoundedAccountingExecutor(es, limit, accountant);
     final Syncer syncer = new Syncer();
     // barrier parties: all the executables plus 1 for main testing thread

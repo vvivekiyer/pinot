@@ -36,7 +36,7 @@ public class ResourceLimitPolicy {
   public static final String TABLE_THREADS_SOFT_LIMIT = "table_threads_soft_limit_pct";
   public static final String TABLE_THREADS_HARD_LIMIT = "table_threads_hard_limit_pct";
   public static final int DEFAULT_TABLE_THREADS_SOFT_LIMIT = 4;
-  public static final int DEFAULT_TABLE_THREADS_HARD_LIMIT = 8;
+  public static final int DEFAULT_TABLE_THREADS_HARD_LIMIT = 20;
 
   private final int _maxThreadsPerQuery;
   private final int _tableThreadsSoftLimit;

@@ -19,7 +19,7 @@
 package org.apache.pinot.core.query.scheduler.resources;
 
 import com.google.common.base.Preconditions;
-import java.util.concurrent.Executor;
+import com.google.common.util.concurrent.ListeningExecutorService;
 import java.util.concurrent.Semaphore;
 import org.apache.pinot.core.query.scheduler.SchedulerGroupAccountant;
 import org.slf4j.Logger;
@@ -39,12 +39,12 @@ import org.slf4j.LoggerFactory;
 public class BoundedAccountingExecutor extends QueryExecutorService {
   private static final Logger LOGGER = LoggerFactory.getLogger(BoundedAccountingExecutor.class);
 
-  private final Executor _delegateExecutor;
+  private final ListeningExecutorService _delegateExecutor;
   private final int _bounds;
   private final Semaphore _semaphore;
   private final SchedulerGroupAccountant _accountant;
 
-  public BoundedAccountingExecutor(Executor s, int bounds, SchedulerGroupAccountant accountant) {
+  public BoundedAccountingExecutor(ListeningExecutorService s, int bounds, SchedulerGroupAccountant accountant) {
     Preconditions.checkNotNull(s);
     Preconditions.checkNotNull(accountant);
     Preconditions.checkArgument(bounds > 0);
@@ -56,7 +56,7 @@ public class BoundedAccountingExecutor extends QueryExecutorService {
 
   @Override
   public void execute(Runnable command) {
-    _delegateExecutor.execute(toAccountingRunnable(command));
+    _delegateExecutor.submit(toAccountingRunnable(command));
   }
 
   @Override

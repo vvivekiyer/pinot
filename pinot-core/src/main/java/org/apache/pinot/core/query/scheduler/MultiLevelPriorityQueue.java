@@ -77,7 +77,7 @@ public class MultiLevelPriorityQueue implements SchedulerPriorityQueue {
     // we are over provisioning tokens here because its better to keep pipe full rather than empty
     _queryDeadlineMillis = config.getProperty(QUERY_DEADLINE_SECONDS_KEY, 30) * 1000;
     _wakeUpTimeMicros = config.getProperty(QUEUE_WAKEUP_MICROS, DEFAULT_WAKEUP_MICROS);
-    _maxPendingPerGroup = config.getProperty(MAX_PENDING_PER_GROUP_KEY, 10);
+    _maxPendingPerGroup = config.getProperty(MAX_PENDING_PER_GROUP_KEY, 20);
     _config = config;
     _resourceManager = resourceManager;
     _groupFactory = groupFactory;
