@@ -41,6 +41,7 @@ public class OnHeapBytesDictionary extends BaseImmutableDictionary {
   private final Object2IntOpenHashMap<ByteArray> _valToDictId;
   private final ByteArray[] _dictIdToVal;
 
+  // TODO(Vivek): Check if interning should be enabled.
   public OnHeapBytesDictionary(PinotDataBuffer dataBuffer, int length, int numBytesPerValue) {
     super(dataBuffer, length, numBytesPerValue);
 

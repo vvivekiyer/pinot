@@ -54,6 +54,7 @@ public class IndexingConfig extends BaseJsonConfig {
   private List<String> _noDictionaryColumns; // TODO: replace this with noDictionaryConfig.
   private Map<String, String> _noDictionaryConfig;
   private List<String> _onHeapDictionaryColumns;
+  private Map<String, OnHeapDictionaryConfig> _onHeapDictionaryConfigs;
   private boolean _enableDefaultStarTree;
   private List<StarTreeIndexConfig> _starTreeIndexConfigs;
   // Whether to allow creating star-tree when server loads the segment
@@ -248,6 +249,15 @@ public class IndexingConfig extends BaseJsonConfig {
 
   public void setOnHeapDictionaryColumns(List<String> onHeapDictionaryColumns) {
     _onHeapDictionaryColumns = onHeapDictionaryColumns;
+  }
+
+  @Nullable
+  public Map<String, OnHeapDictionaryConfig> getOnHeapDictionaryConfigs() {
+    return _onHeapDictionaryConfigs;
+  }
+
+  public void setOnHeapDictionaryConfigs(Map<String, OnHeapDictionaryConfig> onHeapDictionaryConfigs) {
+    _onHeapDictionaryConfigs = onHeapDictionaryConfigs;
   }
 
   @Nullable

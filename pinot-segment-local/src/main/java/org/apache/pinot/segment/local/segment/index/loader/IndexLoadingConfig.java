@@ -52,6 +52,7 @@ import org.apache.pinot.spi.config.table.FieldConfig;
 import org.apache.pinot.spi.config.table.IndexConfig;
 import org.apache.pinot.spi.config.table.IndexingConfig;
 import org.apache.pinot.spi.config.table.JsonIndexConfig;
+import org.apache.pinot.spi.config.table.OnHeapDictionaryConfig;
 import org.apache.pinot.spi.config.table.StarTreeIndexConfig;
 import org.apache.pinot.spi.config.table.TableConfig;
 import org.apache.pinot.spi.data.DimensionFieldSpec;
@@ -88,6 +89,7 @@ public class IndexLoadingConfig {
   private final Map<String, String> _noDictionaryConfig = new HashMap<>();
   private final Set<String> _varLengthDictionaryColumns = new HashSet<>();
   private Set<String> _onHeapDictionaryColumns = new HashSet<>();
+  private Map<String, OnHeapDictionaryConfig> _onHeapDictionaryConfigs = new HashMap<>();
   private Set<String> _forwardIndexDisabledColumns = new HashSet<>();
   private Map<String, BloomFilterConfig> _bloomFilterConfigs = new HashMap<>();
   private boolean _enableDynamicStarTreeCreation;
@@ -228,6 +230,14 @@ public class IndexLoadingConfig {
     List<String> onHeapDictionaryColumns = indexingConfig.getOnHeapDictionaryColumns();
     if (onHeapDictionaryColumns != null) {
       _onHeapDictionaryColumns.addAll(onHeapDictionaryColumns);
+      for (String column : onHeapDictionaryColumns) {
+        _onHeapDictionaryConfigs.put(column, new OnHeapDictionaryConfig(false, 0));
+      }
+    }
+
+    Map<String, OnHeapDictionaryConfig> onHeapDictionaryConfigs = indexingConfig.getOnHeapDictionaryConfigs();
+    if (onHeapDictionaryConfigs != null) {
+      _onHeapDictionaryConfigs.putAll(onHeapDictionaryConfigs);
     }
 
     String tableSegmentVersion = indexingConfig.getSegmentFormatVersion();
@@ -712,6 +722,12 @@ public class IndexLoadingConfig {
     _dirty = true;
   }
 
+  @VisibleForTesting
+  public void setOnHeapDictionaryConfigs(Map<String, OnHeapDictionaryConfig> onHeapDictionaryConfigs) {
+    _onHeapDictionaryConfigs = new HashMap<>(onHeapDictionaryConfigs);
+    _dirty = true;
+  }
+
   /**
    * For tests only.
    */
@@ -760,6 +776,10 @@ public class IndexLoadingConfig {
 
   public Set<String> getOnHeapDictionaryColumns() {
     return unmodifiable(_onHeapDictionaryColumns);
+  }
+
+  public Map<String, OnHeapDictionaryConfig> getOnHeapDictionaryConfigs() {
+    return unmodifiable(_onHeapDictionaryConfigs);
   }
 
   public Set<String> getForwardIndexDisabledColumns() {

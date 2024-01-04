@@ -25,6 +25,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -74,9 +75,11 @@ import org.apache.pinot.segment.spi.index.mutable.provider.MutableIndexContext;
 import org.apache.pinot.segment.spi.index.reader.Dictionary;
 import org.apache.pinot.segment.spi.memory.PinotDataBuffer;
 import org.apache.pinot.segment.spi.store.SegmentDirectory;
+import org.apache.pinot.spi.config.FALFInterner;
 import org.apache.pinot.spi.config.table.FieldConfig;
 import org.apache.pinot.spi.config.table.IndexConfig;
 import org.apache.pinot.spi.config.table.IndexingConfig;
+import org.apache.pinot.spi.config.table.OnHeapDictionaryConfig;
 import org.apache.pinot.spi.config.table.TableConfig;
 import org.apache.pinot.spi.data.FieldSpec;
 import org.apache.pinot.spi.data.Schema;
@@ -90,6 +93,10 @@ public class DictionaryIndexType
     implements ConfigurableFromIndexLoadingConfig<DictionaryIndexConfig> {
   private static final Logger LOGGER = LoggerFactory.getLogger(DictionaryIndexType.class);
   private static final List<String> EXTENSIONS = Collections.singletonList(V1Constants.Dict.FILE_EXTENSION);
+
+  // TODO(Vivek): Check if tablename should also be added.
+  private static Map<String, FALFInterner<String>> strInternerInfoMap = new HashMap<>();
+  private static Map<String, FALFInterner<byte[]>> byteInternerInfoMap = new HashMap<>();
 
   protected DictionaryIndexType() {
     super(StandardIndexes.DICTIONARY_ID);
@@ -107,11 +114,14 @@ public class DictionaryIndexType
     Set<String> noDictionaryCols = indexLoadingConfig.getNoDictionaryColumns();
     Set<String> onHeapCols = indexLoadingConfig.getOnHeapDictionaryColumns();
     Set<String> varLengthCols = indexLoadingConfig.getVarLengthDictionaryColumns();
+    Map<String, OnHeapDictionaryConfig> onHeapDictionaryConfigMap = indexLoadingConfig.getOnHeapDictionaryConfigs();
     for (String column : indexLoadingConfig.getAllKnownColumns()) {
       if (noDictionaryCols.contains(column)) {
         result.put(column, DictionaryIndexConfig.disabled());
       } else {
-        result.put(column, new DictionaryIndexConfig(onHeapCols.contains(column), varLengthCols.contains(column)));
+        OnHeapDictionaryConfig onHeapDictionaryConfig = onHeapDictionaryConfigMap.get(column);
+        result.put(column, new DictionaryIndexConfig(onHeapCols.contains(column), varLengthCols.contains(column),
+            onHeapDictionaryConfig));
       }
     }
     return result;
@@ -162,10 +172,13 @@ public class DictionaryIndexType
       Set<String> varLength = new HashSet<>(
           ic.getVarLengthDictionaryColumns() == null ? Collections.emptyList() : ic.getVarLengthDictionaryColumns()
       );
+      Map<String, OnHeapDictionaryConfig> onHeapDictConfig = new HashMap<>(
+          ic.getOnHeapDictionaryColumns() == null ? Collections.emptyMap() : ic.getOnHeapDictionaryConfigs());
+
       Function<String, DictionaryIndexConfig> valueCalculator =
-          column -> new DictionaryIndexConfig(onHeap.contains(column), varLength.contains(column));
-      return Sets.union(onHeap, varLength).stream()
-          .collect(Collectors.toMap(Function.identity(), valueCalculator));
+          column -> new DictionaryIndexConfig(onHeap.contains(column), varLength.contains(column),
+              onHeapDictConfig.get(column));
+      return Sets.union(onHeap, varLength).stream().collect(Collectors.toMap(Function.identity(), valueCalculator));
     };
 
     return fromNoDictConf
@@ -285,7 +298,19 @@ public class DictionaryIndexType
     boolean loadOnHeap = indexConfig.isOnHeap();
     if (loadOnHeap) {
       String columnName = metadata.getColumnName();
-      LOGGER.info("Loading on-heap dictionary for column: {}", columnName);
+
+      // Create interners for this column if they don't already exist.
+      OnHeapDictionaryConfig onHeapDictConfig = indexConfig.getOnHeapDictionaryConfig();
+      if (onHeapDictConfig != null) {
+        if (onHeapDictConfig.enableInterning()) {
+          strInternerInfoMap.putIfAbsent(columnName, new FALFInterner<>(onHeapDictConfig.internerCapacity()));
+          byteInternerInfoMap.putIfAbsent(columnName, new FALFInterner<>(onHeapDictConfig.internerCapacity(),
+              Arrays::hashCode));
+        }
+      }
+
+      LOGGER.info("Loading on-heap dictionary for column: {} with interning=", columnName,
+          strInternerInfoMap.containsKey(columnName));
     }
 
     int length = metadata.getCardinality();
@@ -308,7 +333,9 @@ public class DictionaryIndexType
             : new BigDecimalDictionary(dataBuffer, length, numBytesPerValue);
       case STRING:
         numBytesPerValue = metadata.getColumnMaxLength();
-        return loadOnHeap ? new OnHeapStringDictionary(dataBuffer, length, numBytesPerValue)
+        String colName = metadata.getColumnName();
+        return loadOnHeap ? new OnHeapStringDictionary(dataBuffer, length, numBytesPerValue,
+            strInternerInfoMap.get(colName), byteInternerInfoMap.get(colName))
             : new StringDictionary(dataBuffer, length, numBytesPerValue);
       case BYTES:
         numBytesPerValue = metadata.getColumnMaxLength();

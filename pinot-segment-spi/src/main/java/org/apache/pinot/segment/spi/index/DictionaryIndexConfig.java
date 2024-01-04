@@ -24,26 +24,31 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.Objects;
 import javax.annotation.Nullable;
 import org.apache.pinot.spi.config.table.IndexConfig;
+import org.apache.pinot.spi.config.table.OnHeapDictionaryConfig;
 
 
 public class DictionaryIndexConfig extends IndexConfig {
 
-  public static final DictionaryIndexConfig DEFAULT = new DictionaryIndexConfig(false, false, false);
-  public static final DictionaryIndexConfig DISABLED = new DictionaryIndexConfig(true, false, false);
+  public static final DictionaryIndexConfig DEFAULT = new DictionaryIndexConfig(false, false, false, null);
+  public static final DictionaryIndexConfig DISABLED = new DictionaryIndexConfig(true, false, false, null);
 
   private final boolean _onHeap;
   private final boolean _useVarLengthDictionary;
+  private final OnHeapDictionaryConfig _onHeapDictionaryConfig;
 
-  public DictionaryIndexConfig(Boolean onHeap, @Nullable Boolean useVarLengthDictionary) {
-    this(false, onHeap, useVarLengthDictionary);
+  public DictionaryIndexConfig(Boolean onHeap, @Nullable Boolean useVarLengthDictionary,
+      @Nullable OnHeapDictionaryConfig onHeapDictionaryConfig) {
+    this(false, onHeap, useVarLengthDictionary, onHeapDictionaryConfig);
   }
 
   @JsonCreator
   public DictionaryIndexConfig(@JsonProperty("disabled") Boolean disabled, @JsonProperty("onHeap") Boolean onHeap,
-      @JsonProperty("useVarLengthDictionary") @Nullable Boolean useVarLengthDictionary) {
+      @JsonProperty("useVarLengthDictionary") @Nullable Boolean useVarLengthDictionary,
+      @JsonProperty("OnHeapDictionaryConfig") @Nullable OnHeapDictionaryConfig onHeapDictionaryConfig) {
     super(disabled);
     _onHeap = onHeap != null && onHeap;
     _useVarLengthDictionary = Boolean.TRUE.equals(useVarLengthDictionary);
+    _onHeapDictionaryConfig = onHeapDictionaryConfig;
   }
 
   public static DictionaryIndexConfig disabled() {
@@ -58,6 +63,10 @@ public class DictionaryIndexConfig extends IndexConfig {
     return _useVarLengthDictionary;
   }
 
+  public OnHeapDictionaryConfig getOnHeapDictionaryConfig() {
+    return _onHeapDictionaryConfig;
+  }
+
   @Override
   public boolean equals(Object o) {
     if (this == o) {
@@ -67,12 +76,13 @@ public class DictionaryIndexConfig extends IndexConfig {
       return false;
     }
     DictionaryIndexConfig that = (DictionaryIndexConfig) o;
-    return _onHeap == that._onHeap && _useVarLengthDictionary == that._useVarLengthDictionary;
+    return _onHeap == that._onHeap && _useVarLengthDictionary == that._useVarLengthDictionary
+        && _onHeapDictionaryConfig == that._onHeapDictionaryConfig;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(_onHeap, _useVarLengthDictionary);
+    return Objects.hash(_onHeap, _useVarLengthDictionary, _onHeapDictionaryConfig);
   }
 
   @Override
