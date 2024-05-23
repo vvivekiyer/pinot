@@ -161,7 +161,7 @@
     <snappy-java.version>1.1.10.5</snappy-java.version>
     <zstd-jni.version>1.5.6-3</zstd-jni.version>
     <lz4-java.version>1.8.0</lz4-java.version>
-    <libthrift.verion>0.18.1</libthrift.verion>
+    <libthrift.verion>0.20.0</libthrift.verion>
     <log4j.version>2.23.1</log4j.version>
     <slf4j.version>2.0.13</slf4j.version>
     <netty.version>4.1.110.Final</netty.version>
