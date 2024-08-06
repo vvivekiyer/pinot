@@ -56,6 +56,9 @@ public enum ServerTimer implements AbstractMetrics.Timer {
   GRPC_QUERY_EXECUTION_MS("milliseconds", false, "Total execution time of a successful query over gRPC"),
   UPSERT_SNAPSHOT_TIME_MS("milliseconds", false, "Total time taken to take upsert table snapshot"),
 
+  SECONDARY_Q_WAIT_TIME_MS("milliseconds", false,
+      "Time spent waiting in the secondary queue when BinaryWorkloadScheduler is used."),
+
   // Multi-stage
   /**
    * Time spent building the hash table for the join.
