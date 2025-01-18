@@ -21,8 +21,10 @@ package org.apache.pinot.segment.local.segment.index.forward;
 
 import java.io.File;
 import java.io.IOException;
+import org.apache.pinot.segment.local.io.writer.impl.FrameOfReferenceChunkFwdIndexWriter;
 import org.apache.pinot.segment.local.segment.creator.impl.fwd.CLPForwardIndexCreatorV1;
 import org.apache.pinot.segment.local.segment.creator.impl.fwd.CLPForwardIndexCreatorV2;
+import org.apache.pinot.segment.local.segment.creator.impl.fwd.FORForwardIndexCreator;
 import org.apache.pinot.segment.local.segment.creator.impl.fwd.MultiValueEntryDictForwardIndexCreator;
 import org.apache.pinot.segment.local.segment.creator.impl.fwd.MultiValueFixedByteRawIndexCreator;
 import org.apache.pinot.segment.local.segment.creator.impl.fwd.MultiValueUnsortedForwardIndexCreator;
@@ -108,6 +110,8 @@ public class ForwardIndexCreatorFactory {
       throws IOException {
     switch (storedType) {
       case INT:
+        return new FORForwardIndexCreator(indexDir, compressionType, column, numTotalDocs, storedType,
+            writerVersion, targetDocsPerChunk);
       case LONG:
       case FLOAT:
       case DOUBLE:

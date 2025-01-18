@@ -1,21 +1,3 @@
-/**
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
- * under the License.
- */
 package org.apache.pinot.segment.local.segment.creator.impl.fwd;
 
 import java.io.File;
@@ -26,16 +8,12 @@ import org.apache.pinot.segment.spi.V1Constants;
 import org.apache.pinot.segment.spi.compression.ChunkCompressionType;
 import org.apache.pinot.segment.spi.index.ForwardIndexConfig;
 import org.apache.pinot.segment.spi.index.creator.ForwardIndexCreator;
-import org.apache.pinot.spi.data.FieldSpec.DataType;
+import org.apache.pinot.spi.data.FieldSpec;
 
 
-/**
- * Raw (non-dictionary-encoded) forward index creator for single-value column of fixed length data type (INT, LONG,
- * FLOAT, DOUBLE).
- */
-public class SingleValueFixedByteRawIndexCreator implements ForwardIndexCreator {
-  private final FixedByteChunkForwardIndexWriter _indexWriter;
-  private final DataType _valueType;
+public class FORForwardIndexCreator implements ForwardIndexCreator {
+  private final FrameOfReferenceChunkFwdIndexWriter _indexWriter;
+  private final FieldSpec.DataType _valueType;
 
   /**
    * Constructor for the class
@@ -47,8 +25,8 @@ public class SingleValueFixedByteRawIndexCreator implements ForwardIndexCreator 
    * @param valueType Type of the values
    * @throws IOException
    */
-  public SingleValueFixedByteRawIndexCreator(File baseIndexDir, ChunkCompressionType compressionType, String column,
-      int totalDocs, DataType valueType)
+  public FORForwardIndexCreator(File baseIndexDir, ChunkCompressionType compressionType, String column,
+      int totalDocs, FieldSpec.DataType valueType)
       throws IOException {
     this(baseIndexDir, compressionType, column, totalDocs, valueType, ForwardIndexConfig.DEFAULT_RAW_WRITER_VERSION,
         ForwardIndexConfig.DEFAULT_TARGET_DOCS_PER_CHUNK);
@@ -65,14 +43,13 @@ public class SingleValueFixedByteRawIndexCreator implements ForwardIndexCreator 
    * @param writerVersion writer format version
    * @throws IOException
    */
-  public SingleValueFixedByteRawIndexCreator(File baseIndexDir, ChunkCompressionType compressionType, String column,
-      int totalDocs, DataType valueType, int writerVersion, int targetDocsPerChunk)
+  public FORForwardIndexCreator(File baseIndexDir, ChunkCompressionType compressionType, String column,
+      int totalDocs, FieldSpec.DataType valueType, int writerVersion, int targetDocsPerChunk)
       throws IOException {
     File file = new File(baseIndexDir, column + V1Constants.Indexes.RAW_SV_FORWARD_INDEX_FILE_EXTENSION);
 
-    _indexWriter =
-        new FixedByteChunkForwardIndexWriter(file, compressionType, totalDocs, targetDocsPerChunk, valueType.size(),
-            writerVersion);
+    _indexWriter = new FrameOfReferenceChunkFwdIndexWriter(file, compressionType, totalDocs, targetDocsPerChunk,2147483639, 2147483647);
+
     _valueType = valueType;
   }
 
@@ -87,7 +64,7 @@ public class SingleValueFixedByteRawIndexCreator implements ForwardIndexCreator 
   }
 
   @Override
-  public DataType getValueType() {
+  public FieldSpec.DataType getValueType() {
     return _valueType;
   }
 
@@ -103,12 +80,12 @@ public class SingleValueFixedByteRawIndexCreator implements ForwardIndexCreator 
 
   @Override
   public void putFloat(float value) {
-    _indexWriter.putFloat(value);
+    // Not implemented
   }
 
   @Override
   public void putDouble(double value) {
-    _indexWriter.putDouble(value);
+    // Not implemented
   }
 
   @Override

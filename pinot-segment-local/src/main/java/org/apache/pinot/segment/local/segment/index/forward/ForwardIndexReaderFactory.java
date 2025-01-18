@@ -20,6 +20,7 @@
 package org.apache.pinot.segment.local.segment.index.forward;
 
 import java.util.Arrays;
+import org.apache.pinot.segment.local.io.writer.impl.FrameOfReferenceChunkFwdIndexWriter;
 import org.apache.pinot.segment.local.io.writer.impl.VarByteChunkForwardIndexWriterV4;
 import org.apache.pinot.segment.local.io.writer.impl.VarByteChunkForwardIndexWriterV5;
 import org.apache.pinot.segment.local.segment.creator.impl.fwd.CLPForwardIndexCreatorV1;
@@ -32,6 +33,7 @@ import org.apache.pinot.segment.local.segment.index.readers.forward.FixedBitSVFo
 import org.apache.pinot.segment.local.segment.index.readers.forward.FixedByteChunkMVForwardIndexReader;
 import org.apache.pinot.segment.local.segment.index.readers.forward.FixedByteChunkSVForwardIndexReader;
 import org.apache.pinot.segment.local.segment.index.readers.forward.FixedBytePower2ChunkSVForwardIndexReader;
+import org.apache.pinot.segment.local.segment.index.readers.forward.FrameOfReferenceChunkFwdIndexReader;
 import org.apache.pinot.segment.local.segment.index.readers.forward.VarByteChunkForwardIndexReaderV4;
 import org.apache.pinot.segment.local.segment.index.readers.forward.VarByteChunkForwardIndexReaderV5;
 import org.apache.pinot.segment.local.segment.index.readers.forward.VarByteChunkMVForwardIndexReader;
@@ -102,6 +104,13 @@ public class ForwardIndexReaderFactory extends IndexReaderFactory.Default<Forwar
         dataBuffer.copyTo(0, magicBytes);
         if (Arrays.equals(magicBytes, CLPForwardIndexCreatorV2.MAGIC_BYTES)) {
           return new CLPForwardIndexReaderV2(dataBuffer, metadata.getTotalDocs());
+        }
+      }
+      if (dataBuffer.size() >= FrameOfReferenceChunkFwdIndexWriter.MAGIC_BYTES.length) {
+        byte[] magicBytes = new byte[FrameOfReferenceChunkFwdIndexWriter.MAGIC_BYTES.length];
+        dataBuffer.copyTo(0, magicBytes);
+        if (Arrays.equals(magicBytes, FrameOfReferenceChunkFwdIndexWriter.MAGIC_BYTES)) {
+          return new FrameOfReferenceChunkFwdIndexReader(dataBuffer, metadata.getDataType().getStoredType());
         }
       }
       return createRawIndexReader(dataBuffer, metadata.getDataType().getStoredType(), metadata.isSingleValue());

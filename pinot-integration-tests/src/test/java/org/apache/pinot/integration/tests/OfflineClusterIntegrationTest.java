@@ -36,12 +36,14 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
+import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.regex.Pattern;
 import javax.annotation.Nullable;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.hc.core5.http.Header;
 import org.apache.hc.core5.http.HttpStatus;
 import org.apache.hc.core5.http.NameValuePair;
@@ -59,8 +61,12 @@ import org.apache.pinot.common.response.server.TableIndexMetadataResponse;
 import org.apache.pinot.common.utils.FileUploadDownloadClient;
 import org.apache.pinot.common.utils.ServiceStatus;
 import org.apache.pinot.common.utils.SimpleHttpResponse;
+import org.apache.pinot.common.utils.TarCompressionUtils;
 import org.apache.pinot.common.utils.http.HttpClient;
 import org.apache.pinot.core.operator.query.NonScanBasedAggregationOperator;
+import org.apache.pinot.segment.local.segment.creator.impl.SegmentIndexCreationDriverImpl;
+import org.apache.pinot.segment.local.segment.readers.GenericRowRecordReader;
+import org.apache.pinot.segment.spi.creator.SegmentGeneratorConfig;
 import org.apache.pinot.segment.spi.index.ForwardIndexConfig;
 import org.apache.pinot.segment.spi.index.StandardIndexes;
 import org.apache.pinot.segment.spi.index.startree.AggregationFunctionColumnPair;
@@ -79,6 +85,8 @@ import org.apache.pinot.spi.data.DimensionFieldSpec;
 import org.apache.pinot.spi.data.FieldSpec.DataType;
 import org.apache.pinot.spi.data.MetricFieldSpec;
 import org.apache.pinot.spi.data.Schema;
+import org.apache.pinot.spi.data.readers.GenericRow;
+import org.apache.pinot.spi.data.readers.RecordReader;
 import org.apache.pinot.spi.utils.CommonConstants;
 import org.apache.pinot.spi.utils.InstanceTypeUtils;
 import org.apache.pinot.spi.utils.JsonUtils;
@@ -103,6 +111,7 @@ import static org.testng.Assert.*;
  * Integration test that converts Avro data for 12 segments and runs queries against it.
  */
 public class OfflineClusterIntegrationTest extends BaseClusterIntegrationTestSet {
+  private static final File INDEX_DIR = new File(FileUtils.getTempDirectory(), "CompressionCodecQueriesTest");
   private static final int NUM_BROKERS = 1;
   private static final int NUM_SERVERS = 1;
   private static final int NUM_SEGMENTS = 12;
@@ -197,11 +206,44 @@ public class OfflineClusterIntegrationTest extends BaseClusterIntegrationTestSet
     startBrokers();
     startServers();
 
-    // Create and upload the schema and table config
-    Schema schema = createSchema();
+
+    Schema schema = createTmpSchema();
     addSchema(schema);
-    TableConfig tableConfig = createOfflineTableConfig();
+    TableConfig tableConfig = createTmpTableConfig();
     addTableConfig(tableConfig);
+
+    List<GenericRow> rows = createTmpRows();
+    SegmentGeneratorConfig config = new SegmentGeneratorConfig(tableConfig, schema);
+    config.setOutDir(_segmentDir.getAbsolutePath());
+    config.setTableName("HackWeekDemo");
+    config.setSegmentName("HackWeekDemo_segment_0");
+    SegmentIndexCreationDriverImpl driver = new SegmentIndexCreationDriverImpl();
+    try (RecordReader recordReader = new GenericRowRecordReader(rows)) {
+      driver.init(config, recordReader);
+      driver.build();
+    }
+    String segmentName = driver.getSegmentName();
+    File indexDir = new File(_segmentDir, segmentName);
+    File segmentTarFile = new File(_tarDir, segmentName + TarCompressionUtils.TAR_GZ_FILE_EXTENSION);
+    TarCompressionUtils.createCompressedTarFile(indexDir, segmentTarFile);
+
+    try {
+      uploadSegments("HackWeekDemo", TableType.OFFLINE, _tarDir);
+    } catch (Exception e) {
+      // If enableParallelPushProtection is enabled and the same segment is uploaded concurrently, we could get one
+      // of the three exception:
+      //   - 409 conflict of the second call enters ProcessExistingSegment
+      //   - segmentZkMetadata creation failure if both calls entered ProcessNewSegment
+      //   - Failed to copy segment tar file to final location due to the same segment pushed twice concurrently
+      // In such cases we upload all the segments again to ensure that the data is set up correctly.
+      assertTrue(e.getMessage().contains("Another segment upload is in progress for segment") || e.getMessage()
+          .contains("Failed to create ZK metadata for segment") || e.getMessage()
+          .contains("java.nio.file.FileAlreadyExistsException"), e.getMessage());
+      uploadSegments(getTableName(), _tarDir);
+    }
+
+
+
 
     // Unpack the Avro files
     List<File> avroFiles = unpackAvroData(_tempDir);
@@ -246,6 +288,48 @@ public class OfflineClusterIntegrationTest extends BaseClusterIntegrationTestSet
     waitForAllDocsLoaded(600_000L);
 
     _tableSize = getTableSize(getTableName());
+  }
+
+  private Schema createTmpSchema() {
+    return new Schema.SchemaBuilder()
+        .setSchemaName("HackWeekDemo")
+        .addMetric("memoryUsedBytes", DataType.INT)
+        .addSingleValueDimension("hostUrn", DataType.STRING)
+        .build();
+  }
+
+  private TableConfig createTmpTableConfig() {
+    return new TableConfigBuilder(TableType.OFFLINE)
+        .setTableName("HackWeekDemo")
+        .setNoDictionaryColumns(Collections.singletonList("memoryUsedBytes"))
+        .build();
+  }
+
+  private List<GenericRow> createTmpRows() {
+    List<GenericRow> rows = new ArrayList<>();
+
+    //Generate random data
+    int rowLength = 1000000;
+    String[] tempStringRows = new String[rowLength];
+    Integer[] tempIntRows = new Integer[rowLength];
+
+    String prefix = "urn:host:li:";
+    for (int i = 0; i < rowLength; i++) {
+      int valInt = RANDOM.nextInt(2147483647 - 2147483639) + 2147483639;
+      String valStr = prefix + i;
+
+      tempStringRows[i] = valStr;
+      tempIntRows[i] = valInt;
+    }
+
+    for (int i = 0; i < rowLength; i++) {
+      GenericRow row = new GenericRow();
+      row.putValue("memoryUsedBytes", tempIntRows[i]);
+      row.putValue("hostUrn", tempStringRows[i]);
+      rows.add(row);
+    }
+
+    return rows;
   }
 
   private void reloadAllSegments(String testQuery, boolean forceDownload, long numTotalDocs)
