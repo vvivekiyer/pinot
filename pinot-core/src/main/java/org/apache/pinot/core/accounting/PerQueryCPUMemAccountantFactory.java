@@ -19,6 +19,7 @@
 package org.apache.pinot.core.accounting;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.google.common.base.Preconditions;
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryMXBean;
 import java.util.Collection;
@@ -46,6 +47,7 @@ import org.apache.pinot.spi.accounting.ThreadExecutionContext;
 import org.apache.pinot.spi.accounting.ThreadResourceTracker;
 import org.apache.pinot.spi.accounting.ThreadResourceUsageAccountant;
 import org.apache.pinot.spi.accounting.ThreadResourceUsageProvider;
+import org.apache.pinot.spi.accounting.TrackingScope;
 import org.apache.pinot.spi.config.instance.InstanceType;
 import org.apache.pinot.spi.env.PinotConfiguration;
 import org.apache.pinot.spi.metrics.PinotMetricUtils;
@@ -59,6 +61,10 @@ import org.slf4j.LoggerFactory;
  * Accounting mechanism for thread task execution status and thread resource usage sampling
  * Design and algorithm see
  * https://docs.google.com/document/d/1Z9DYAfKznHQI9Wn8BjTWZYTcNRVGiPP0B8aEP3w_1jQ
+ *
+ * TODO: Functionalities in this Accountant are now supported in a more generic ResourceUsageAccountantFactory. Keeping
+ * this around for backward compatibility. Will slowly phase this out in favor of ResourceUsageAccountantFactory after
+ * achieving stability.
  */
 public class PerQueryCPUMemAccountantFactory implements ThreadAccountantFactory {
 
@@ -74,6 +80,7 @@ public class PerQueryCPUMemAccountantFactory implements ThreadAccountantFactory 
      */
     static final MemoryMXBean MEMORY_MX_BEAN = ManagementFactory.getMemoryMXBean();
     private static final Logger LOGGER = LoggerFactory.getLogger(PerQueryCPUMemResourceUsageAccountant.class);
+
     private static final boolean IS_DEBUG_MODE_ENABLED = LOGGER.isDebugEnabled();
     /**
      * Executor service for the thread accounting task, slightly higher priority than normal priority
@@ -262,7 +269,11 @@ public class PerQueryCPUMemAccountantFactory implements ThreadAccountantFactory 
     }
 
     @Override
-    public void updateQueryUsageConcurrently(String queryId) {
+    public void updateResourceUsageConcurrently(String queryId, TrackingScope resourceType) {
+      if (!resourceType.equals(TrackingScope.QUERY)) {
+        return;
+      }
+
       if (_isThreadCPUSamplingEnabled) {
         long cpuUsageNS = getThreadResourceUsageProvider().getThreadTimeNs();
         _concurrentTaskCPUStatsAggregator.compute(queryId,
@@ -311,17 +322,18 @@ public class PerQueryCPUMemAccountantFactory implements ThreadAccountantFactory 
 
     @Override
     public void createExecutionContextInner(@Nullable String queryId, int taskId,
-        ThreadExecutionContext.TaskType taskType, @Nullable ThreadExecutionContext parentContext) {
+        ThreadExecutionContext.TaskType taskType, @Nullable ThreadExecutionContext parentContext, @Nullable String workloadName) {
       _threadLocalEntry.get()._errorStatus.set(null);
       if (parentContext == null) {
         // is anchor thread
         assert queryId != null;
         _threadLocalEntry.get()
-            .setThreadTaskStatus(queryId, CommonConstants.Accounting.ANCHOR_TASK_ID, taskType, Thread.currentThread());
+            .setThreadTaskStatus(queryId, CommonConstants.Accounting.ANCHOR_TASK_ID, taskType, Thread.currentThread(),
+                workloadName);
       } else {
         // not anchor thread
         _threadLocalEntry.get().setThreadTaskStatus(queryId, taskId, parentContext.getTaskType(),
-            parentContext.getAnchorThread());
+            parentContext.getAnchorThread(), workloadName);
       }
     }
 
@@ -394,10 +406,10 @@ public class PerQueryCPUMemAccountantFactory implements ThreadAccountantFactory 
       for (Map.Entry<Thread, CPUMemThreadLevelAccountingObjects.ThreadEntry> entry : _threadEntriesMap.entrySet()) {
         // sample current usage
         CPUMemThreadLevelAccountingObjects.ThreadEntry threadEntry = entry.getValue();
-        long currentCPUSample = _isThreadCPUSamplingEnabled
-            ? threadEntry._currentThreadCPUTimeSampleMS : 0;
-        long currentMemSample = _isThreadMemorySamplingEnabled
-            ? threadEntry._currentThreadMemoryAllocationSampleBytes : 0;
+
+        long currentCPUSample = _isThreadCPUSamplingEnabled ? threadEntry._currentThreadCPUTimeSampleMS : 0;
+        long currentMemSample =
+            _isThreadMemorySamplingEnabled ? threadEntry._currentThreadMemoryAllocationSampleBytes : 0;
         // sample current running task status
         CPUMemThreadLevelAccountingObjects.TaskEntry currentTaskStatus = threadEntry.getCurrentThreadTaskStatus();
         Thread thread = entry.getKey();
